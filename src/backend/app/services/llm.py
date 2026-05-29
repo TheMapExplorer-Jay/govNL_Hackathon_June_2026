@@ -1,10 +1,11 @@
-from app.config import settings
 from langchain_openai import ChatOpenAI
+
+from app.config import settings
 
 
 def make_llm(model: str, *, streaming: bool = False) -> ChatOpenAI:
     kwargs: dict = dict(
-        model=model,
+        model="gpt-5-chat-latest",
         api_key=settings.OPENAI_KEY,
         streaming=streaming,
     )
