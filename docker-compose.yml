@@ -30,10 +30,6 @@ services:
     build:
       context: ./src/backend
       dockerfile: Dockerfile.dev
-      args:
-        UV_INDEX_PZH_USERNAME: ${UV_INDEX_PZH_USERNAME:-dummy}
-      secrets:
-        - uv_index_pzh_password
     ports:
       - "8001:8001"
     volumes:
@@ -112,10 +108,6 @@ services:
 volumes:
   pgdata:
   mlflow_data:
-
-secrets:
-  uv_index_pzh_password:
-    environment: UV_INDEX_PZH_PASSWORD
 
 networks:
   network:
