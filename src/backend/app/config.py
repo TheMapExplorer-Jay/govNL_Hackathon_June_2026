@@ -12,12 +12,12 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    OPENAI_KEY: str = ""
+    GREENPT_KEY: str = ""
 
     ALLOWED_ORIGINS: str = "*"
     DEBUG: bool = False
     DICTIONARY_CACHE: bool = True
-    OPENAI_MODEL: str = "gpt-5-chat"
+    OPENAI_MODEL: str = "gemma4"
     PORT: int = 8000
     DATABASE_URL: str = (
         "postgresql+asyncpg://ruimtelijke:secret123!@localhost:5432/sessions"

@@ -5,9 +5,10 @@ from app.config import settings
 
 def make_llm(model: str, *, streaming: bool = False) -> ChatOpenAI:
     kwargs: dict = dict(
-        model="gpt-5-chat-latest",
-        api_key=settings.OPENAI_KEY,
+        api_key=settings.GREENPT_KEY,
         streaming=streaming,
+        base_url="https://api.greenpt.ai/v1",
+        model=model,
     )
     model_lower = model.lower()
     is_reasoning = model_lower.startswith(("o1", "o3", "o4")) or "5.2" in model_lower
