@@ -37,11 +37,9 @@ This repository is the starting point for the hackathon. The spatial assistant i
 2. Copy the backend environment file and add your LLM credentials:
    ```bash
    cp src/backend/.env.example src/backend/.env
-   # Edit src/backend/.env: set OPENAI_KEY (and optionally OPENAI_MODEL).
+   # Edit src/backend/.env: set GREENPT_KEY (and optionally OPENAI_MODEL).
    ```
-   The LLM helper, [src/backend/app/services/llm.py](src/backend/app/services/llm.py), uses the standard OpenAI-compatible API via `langchain_openai.ChatOpenAI`.
-
-   **GreenPT.** PZH offers GreenPT credentials to teams. To use GreenPT instead of OpenAI, set `OPENAI_KEY` and `OPENAI_MODEL` in `src/backend/.env` to your GreenPT values, and set `OPENAI_BASE_URL` to the GreenPT endpoint per [docs.greenpt.ai](https://docs.greenpt.ai). The OpenAI public API stays available as a fallback if GreenPT is unreachable.
+   The LLM helper, [src/backend/app/services/llm.py](src/backend/app/services/llm.py), is wired to **GreenPT** out of the box: `base_url` is hardcoded to `https://api.greenpt.ai/v1`, the default `OPENAI_MODEL` is `gemma4`, and the API key is read from `GREENPT_KEY`. GreenPT credentials are offered to OneGov #2 hackathon teams by Provincie Zuid-Holland; see [docs.greenpt.ai](https://docs.greenpt.ai). To swap models, change `OPENAI_MODEL`.
 3. Copy the frontend environment file:
    ```bash
    cp src/frontend/.env.example src/frontend/.env
@@ -87,9 +85,7 @@ cp src/backend/.env.example src/backend/.env
 cp src/frontend/.env.example src/frontend/.env
 ```
 
-> **LLM configuration.** Before running the app, set `OPENAI_KEY` in `src/backend/.env`. The model is controlled by `OPENAI_MODEL` (default `gpt-5-chat`), see `.env.example`. For GreenPT, also set `OPENAI_BASE_URL` to the GreenPT endpoint per [docs.greenpt.ai](https://docs.greenpt.ai); the OpenAI public API remains the fallback.
-
-> **PZH private uv index.** The backend `pyproject.toml` and the frontend `package.json` resolve a small number of `@pzh-temporary/...` and PZH-internal Python packages from a private uv / npm index. `docker compose up --build` reads `UV_INDEX_PZH_USERNAME` and `UV_INDEX_PZH_PASSWORD` from your shell environment; if you do not have those credentials, ask the challenge owners. Without them the Docker build will fail at the `uv sync` step, even on a clean clone.
+> **LLM configuration.** Before running the app, set `GREENPT_KEY` in `src/backend/.env`. The model is controlled by `OPENAI_MODEL` (default `gemma4`), see `.env.example`. The GreenPT base URL is hardcoded in [src/backend/app/services/llm.py](src/backend/app/services/llm.py); to point at a different OpenAI-compatible endpoint, change it there.
 
 ### Git hooks
 

@@ -27,17 +27,16 @@ Teams take the working spatial assistant and extend it from descriptive question
 
 ## Data themes
 
-Three primary data themes are loaded by default from `src/backend/data/`:
+Two primary data themes are loaded by default from `src/backend/data/`:
 
 1. **drinkwaterzekerheid.** Drinking-water infrastructure, drinking-water production chain, drinking-water companies, *toestandsbeoordeling oppervlaktewaterlichamen*, water boards, and the six-hour zones around abstraction points.
 2. **gebiedsviewer.** Around 50 provincial layers, including verzilting, bodemdaling, *overstromingskwetsbaarheid*, *groenblauwe ruimte*, *natuurnetwerk*, nutrient-polluted areas, soil stability, and other soil data.
-3. **lgn.** Land-use rasters (*Landgebruik Nederland*), 2018 through 2022.
 
 Optional extra themes are available in `src/backend/extra_data/`:
 
+- **lgn.** Land-use rasters (*Landgebruik Nederland*), 2018 through 2022. Not directly tied to the drinkwater question, but useful for scenarios that hinge on land-use change.
 - **CBS** vierkantstatistieken 2018 through 2023.
 - **Woondeals** umbrella, which in this repository also bundles **PMIEK** projects, **stikstof** depositions and KDW exceedance, **air quality** (CIMLK 2025 baselines and 2030 projections), **traffic intensity** measurements, and OV stop locations.
-- An additional **gebiedsviewer** layer set.
 
 A precise per-table inventory, with an indication of what is loaded by default and what still needs to be confirmed by the challenge owners, is in [docs/data-inventory.md](docs/data-inventory.md).
 

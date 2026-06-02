@@ -18,17 +18,33 @@ Touches: `drinkwaterzekerheid`, `gebiedsviewer` (verzilting, bodemdaling, daling
 
 > *Waar liggen de kansen: welke ingrepen in intrekgebieden vergroten de robuustheid het meest?*
 
-Touches: `drinkwaterzekerheid` (six-hour zones, productieketen, toestandsbeoordeling), `gebiedsviewer` (groenblauwe ruimte, natuurnetwerk, nutriënten verontreinigde gebieden, natuurlijke spons kansrijk), `lgn` for land-use shifts.
+Touches: `drinkwaterzekerheid` (six-hour zones, productieketen, toestandsbeoordeling), `gebiedsviewer` (groenblauwe ruimte, natuurnetwerk, nutriënten verontreinigde gebieden, natuurlijke spons kansrijk), and optionally `extra_data/lgn` for land-use shifts (LGN now lives under `extra_data/` and is opt-in).
 
 ---
 
 ## Additional drinkwater-specific scenarios
 
-> _TODO (Sebastiaan Schmidt, Tim Padmos, Thijs Raterink): the brief promises that more drinkwater-specific scenarios and example questions will be supplied by the challenge owners. Add them here, in the same shape as the three above (one Dutch sentence + the data themes it touches), so teams can pick them up directly._
+The three scenarios below are **drafts** put together by the GovTech NL hackathon prep team while waiting on Sebastiaan, Tim and Thijs to deliver the authoritative list. Treat them as placeholders, not as canonical brief questions; expect them to be replaced or sharpened before 4 June.
 
-- _TODO_
-- _TODO_
-- _TODO_
+### A. Bescherming van intrekgebieden onder ruimtelijke druk
+
+> *Welke intrekgebieden in Zuid-Holland staan in 2040 het meest onder druk door ruimtelijke ontwikkelingen, en welke beschermingsmaatregelen leveren het meeste effect op?*
+
+Touches: `drinkwaterzekerheid` (zes-uur-zones, intrekgebieden, productieketen), `gebiedsviewer` (natuurnetwerk, groenblauwe ruimte, nutriënten verontreinigde gebieden, stabiliteit), `extra_data/woondeals` (PMIEK-projecten, capaciteitskaart) for spatial-planning pressure.
+
+### B. Klimaat-resilientie van het oppervlaktewater
+
+> *Hoe verandert de toestandsbeoordeling van oppervlaktewaterlichamen die als drinkwaterbron dienen onder een gecombineerd droogte- en verziltingsscenario, en welke regio's verliezen daarmee het eerst hun bruikbaarheid als bron?*
+
+Touches: `drinkwaterzekerheid` (toestandsbeoordeling oppervlaktewaterlichamen, drinkwaterbedrijven, productieketen), `gebiedsviewer` (verzilting, veenoxidatie, daling bij ontwateringsdiepte, overstromingskwetsbaarheid).
+
+### C. Stikstof- en nutriëntendruk op grondwaterbronnen
+
+> *Welke grondwaterbronnen voor drinkwater liggen in gebieden met de grootste stikstof- en nutriëntendruk, en hoe verhoudt dat zich tot bestaande beschermingsmaatregelen?*
+
+Touches: `drinkwaterzekerheid` (drinkwater_infrastructuur, zes-uur-zones), `gebiedsviewer` (nutriënten verontreinigde gebieden, natuurnetwerk, natura 2000-gebieden), `extra_data/woondeals` (stikstof_natura2000_stats, stikstof_overschrijding_kdw).
+
+> _TODO (Sebastiaan Schmidt, Tim Padmos, Thijs Raterink): replace or refine the three drafts above with the authoritative list. The brief promises that more drinkwater-specific scenarios and example questions will be supplied by the challenge owners._
 
 ## How to use these scenarios
 
