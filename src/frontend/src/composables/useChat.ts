@@ -14,7 +14,7 @@ import { useMap } from "./useMap";
 
 const messages = ref<ChatMessage[]>([]);
 const isStreaming = ref(false);
-const model = ref("gpt-5-chat");
+const model = ref("gemma4");
 const sessionId = ref<string | null>(null);
 
 export function useChat() {

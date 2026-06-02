@@ -10,5 +10,5 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage]
-    model: str = "gpt-5-chat"
+    model: str = "gemma4"
     session_id: uuid.UUID | None = None

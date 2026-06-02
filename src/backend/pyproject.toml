@@ -19,6 +19,7 @@ dependencies = [
     "greenlet>=3.4.0",
     "langchain>=0.3.25",
     "mlflow-skinny>=3.12",
+    "databricks-sdk>=0.20",
     "pandas>=2.0",
     "jinja2>=3.0",
 ]

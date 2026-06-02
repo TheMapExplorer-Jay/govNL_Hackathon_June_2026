@@ -5,11 +5,7 @@ RUN pip install uv
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-ARG UV_INDEX_PZH_USERNAME=dummy
-RUN --mount=type=secret,id=uv_index_pzh_password \
-    UV_INDEX_PZH_USERNAME=${UV_INDEX_PZH_USERNAME} \
-    UV_INDEX_PZH_PASSWORD=$(cat /run/secrets/uv_index_pzh_password) \
-    uv sync
+RUN uv sync
 
 COPY alembic/ ./alembic
 COPY alembic.ini ./alembic.ini

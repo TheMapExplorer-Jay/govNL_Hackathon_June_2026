@@ -9,11 +9,7 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-ARG UV_INDEX_PZH_USERNAME=dummy
-RUN --mount=type=secret,id=uv_index_pzh_password \
-    UV_INDEX_PZH_USERNAME=${UV_INDEX_PZH_USERNAME} \
-    UV_INDEX_PZH_PASSWORD=$(cat /run/secrets/uv_index_pzh_password) \
-    uv sync --frozen --no-dev --no-cache && rm -rf /root/.cache
+RUN uv sync --frozen --no-dev --no-cache && rm -rf /root/.cache
 
 # --- Stage 2: Runtime ---
 FROM --platform=linux/amd64 python:3.12-slim AS runner

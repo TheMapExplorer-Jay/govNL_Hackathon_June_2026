@@ -33,10 +33,7 @@ const {
 const showHistory = ref(false);
 
 const modelOptions = [
-	{ value: "gpt-5-chat", text: "GPT-5" },
-	{ value: "gpt-5.2-chat", text: "GPT-5.2" },
-	{ value: "o4-mini", text: "o4-mini" },
-	{ value: "Mistral-Large-3", text: "Mistral Large 3" },
+	{ value: "gemma4", text: "gemma4" },
 ];
 
 onMounted(() => {
