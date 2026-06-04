@@ -78,11 +78,7 @@ class ExecuteQueryNode(BaseNode):
         sql_query = sql_query.rstrip().rstrip(";")
 
         with connect_delta() as con:
-            # 1. Setup: Load H3 extension and register all per-theme tables as views
-            try:
-                con.execute("LOAD h3;")
-            except Exception:
-                con.execute("INSTALL h3 FROM community; LOAD h3;")
+            # 1. Register all per-theme tables as views (uses cached table list)
             register_tables(con)
 
             # 2. Materialize: Create a temporary table with the user's query results

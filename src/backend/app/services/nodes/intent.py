@@ -64,6 +64,7 @@ class IntentNode(BaseNode):
             {
                 "themes": state["dictionary"].themes,
                 "history": to_langchain_history(state["messages"]),
+                "scenario_context": state.get("scenario_context") or "",
             },
         )
 

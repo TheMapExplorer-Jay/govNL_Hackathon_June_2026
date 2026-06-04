@@ -24,6 +24,7 @@ class SqlGenerationNode(BaseNode):
         return {
             "themes": dictionary.themes,
             "intent_section": format_intent_section(intent, for_sql=True),
+            "scenario_context": state.get("scenario_context") or "",
         }
 
     async def run(self, state: ConversationState, config: RunnableConfig) -> dict:

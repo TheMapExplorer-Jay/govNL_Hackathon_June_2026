@@ -23,6 +23,11 @@ import { getH3Bounds } from "../utils/h3utils";
 
 const MAX_ELEVATION_METERS = 2000;
 
+// Reference layers toggled on by the LayerControl panel (rendered below query results)
+const referenceLayerMap = new Map<string, H3HexagonLayer<{ h3_id: string }>>();
+// Current query-result layers (rebuilt on each updateHexagons call)
+let currentQueryLayers: H3HexagonLayer<any>[] = [];
+
 // Blue and purple are excluded because they clash with the numeric colour scale
 const ICON_COLORS: [number, number, number, number][] = [
 	[34, 197, 94, 230], // green
@@ -48,6 +53,12 @@ const PIN_MAPPING: Record<
 
 const map = shallowRef<maplibregl.Map | null>(null);
 const deckOverlay = shallowRef<MapboxOverlay | null>(null);
+const pickingLocation = ref(false);
+let pinMarker: maplibregl.Marker | null = null;
+
+const PIN_SOURCE = "location-pin-buffer";
+const PIN_FILL_LAYER = "location-pin-fill";
+const PIN_LINE_LAYER = "location-pin-line";
 const legend = ref<LegendConfig | null>(null);
 const heightLegend = ref<HeightLegendConfig | null>(null);
 const iconLegend = ref<IconLegendConfig | null>(null);
@@ -68,6 +79,134 @@ watch([scaleMode, hexOpacity], () => {
 		updateHexagons(lastHexData, lastMapPlan);
 	}
 });
+
+// ---------------------------------------------------------------------------
+// Location pin helpers
+// ---------------------------------------------------------------------------
+
+function _circleGeoJSON(lat: number, lng: number, radiusKm: number) {
+	const n = 64;
+	const coords: [number, number][] = [];
+	for (let i = 0; i <= n; i++) {
+		const angle = (i / n) * 2 * Math.PI;
+		const dLat = (radiusKm / 111.32) * Math.sin(angle);
+		const dLng =
+			(radiusKm / (111.32 * Math.cos((lat * Math.PI) / 180))) *
+			Math.cos(angle);
+		coords.push([lng + dLng, lat + dLat]);
+	}
+	return {
+		type: "FeatureCollection" as const,
+		features: [
+			{
+				type: "Feature" as const,
+				geometry: { type: "Polygon" as const, coordinates: [coords] },
+				properties: {},
+			},
+		],
+	};
+}
+
+function setLocationPin(lat: number, lng: number, radiusKm: number) {
+	const m = map.value;
+	if (!m) return;
+
+	const geojson = _circleGeoJSON(lat, lng, radiusKm);
+
+	if (m.getSource(PIN_SOURCE)) {
+		(m.getSource(PIN_SOURCE) as maplibregl.GeoJSONSource).setData(geojson);
+	} else {
+		m.addSource(PIN_SOURCE, { type: "geojson", data: geojson });
+		m.addLayer({
+			id: PIN_FILL_LAYER,
+			type: "fill",
+			source: PIN_SOURCE,
+			paint: { "fill-color": "#3b82f6", "fill-opacity": 0.1 },
+		});
+		m.addLayer({
+			id: PIN_LINE_LAYER,
+			type: "line",
+			source: PIN_SOURCE,
+			paint: {
+				"line-color": "#3b82f6",
+				"line-width": 2,
+				"line-dasharray": [4, 2],
+			},
+		});
+	}
+
+	if (pinMarker) {
+		pinMarker.setLngLat([lng, lat]);
+	} else {
+		const el = document.createElement("div");
+		el.className = "map-pin-marker";
+		el.innerHTML =
+			'<svg width="22" height="28" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+			'<path d="M11 0C5 0 0 5 0 11c0 8.25 11 17 11 17s11-8.75 11-17C22 5 17 0 11 0z" fill="#3b82f6"/>' +
+			'<circle cx="11" cy="11" r="4" fill="white"/>' +
+			"</svg>";
+		el.style.cursor = "pointer";
+		pinMarker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+			.setLngLat([lng, lat])
+			.addTo(m);
+	}
+}
+
+function clearLocationPin() {
+	const m = map.value;
+	if (!m) return;
+	if (m.getLayer(PIN_FILL_LAYER)) m.removeLayer(PIN_FILL_LAYER);
+	if (m.getLayer(PIN_LINE_LAYER)) m.removeLayer(PIN_LINE_LAYER);
+	if (m.getSource(PIN_SOURCE)) m.removeSource(PIN_SOURCE);
+	if (pinMarker) {
+		pinMarker.remove();
+		pinMarker = null;
+	}
+}
+
+function startLocationPicking() {
+	pickingLocation.value = true;
+	if (map.value) map.value.getCanvas().style.cursor = "crosshair";
+}
+
+function stopLocationPicking() {
+	pickingLocation.value = false;
+	if (map.value) map.value.getCanvas().style.cursor = "";
+}
+
+// ---------------------------------------------------------------------------
+
+function _syncDeckLayers() {
+	if (!deckOverlay.value) return;
+	deckOverlay.value.setProps({
+		layers: [...referenceLayerMap.values(), ...currentQueryLayers],
+	});
+}
+
+function setReferenceLayer(
+	id: string,
+	h3Ids: string[],
+	color: [number, number, number],
+) {
+	const layer = new H3HexagonLayer<{ h3_id: string }>({
+		id: `ref-${id}`,
+		data: h3Ids.map((h) => ({ h3_id: h })),
+		getHexagon: (d) => d.h3_id,
+		getFillColor: [...color, 150] as [number, number, number, number],
+		extruded: false,
+		filled: true,
+		stroked: false,
+		opacity: 1,
+		pickable: false,
+	});
+	referenceLayerMap.set(id, layer);
+	_syncDeckLayers();
+}
+
+function removeReferenceLayer(id: string) {
+	referenceLayerMap.delete(id);
+	_syncDeckLayers();
+}
 
 function initMap(container: string | HTMLElement) {
 	const mapInstance = new maplibregl.Map({
@@ -359,9 +498,8 @@ function updateHexagons(data: Record<string, unknown>[], plan: MapPlan) {
 		);
 	}
 
-	deckOverlay.value.setProps({
-		layers: [layer, ...extraLayers],
-	});
+	currentQueryLayers = [layer, ...extraLayers];
+	_syncDeckLayers();
 
 	legend.value =
 		color && color.kind === "numeric"
@@ -411,9 +549,8 @@ function updateHexagons(data: Record<string, unknown>[], plan: MapPlan) {
 }
 
 function clearHexagons() {
-	if (deckOverlay.value) {
-		deckOverlay.value.setProps({ layers: [] });
-	}
+	currentQueryLayers = [];
+	_syncDeckLayers(); // reference layers stay on
 	legend.value = null;
 	heightLegend.value = null;
 	iconLegend.value = null;
@@ -436,8 +573,15 @@ export function useMap() {
 		tooltip,
 		scaleMode,
 		hexOpacity,
+		pickingLocation,
 		initMap,
 		updateHexagons,
 		clearHexagons,
+		setReferenceLayer,
+		removeReferenceLayer,
+		setLocationPin,
+		clearLocationPin,
+		startLocationPicking,
+		stopLocationPicking,
 	};
 }

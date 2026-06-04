@@ -10,6 +10,7 @@ import type {
 import { THINKING_STEP_LABELS } from "../types/chat";
 import { generateId } from "../utils/formatting";
 import { useDuckDB } from "./useDuckDB";
+import { extractTablesFromSql, useLayerPanel } from "./useLayerPanel";
 import { useMap } from "./useMap";
 
 const messages = ref<ChatMessage[]>([]);
@@ -25,6 +26,8 @@ export function useChat() {
 
 	async function sendMessage(text: string) {
 		if (!text.trim() || isStreaming.value) return;
+
+		const { activateLayers } = useLayerPanel();
 
 		const userMsg: ChatMessage = {
 			id: generateId(),
@@ -117,6 +120,24 @@ export function useChat() {
 							const entry = matches[matches.length - 1];
 							if (entry) {
 								entry.summary = parsed.summary;
+							}
+							break;
+						}
+						case "sql_block": {
+							const parsed = JSON.parse(data);
+							const sql: string = parsed.query ?? "";
+							if (sql) {
+								const tables = extractTablesFromSql(sql);
+								if (tables.length) activateLayers(tables);
+							}
+							break;
+						}
+						case "assumption_log": {
+							const parsed = JSON.parse(data);
+							msg.assumptionLog = parsed;
+							// Auto-activate every dataset the scenario engine identified
+							if (parsed.datasets_to_use?.length) {
+								activateLayers(parsed.datasets_to_use);
 							}
 							break;
 						}

@@ -2,6 +2,8 @@ from typing import Any, Literal, TypedDict
 
 from pydantic import BaseModel
 
+from app.models.scenario import ScenarioParams
+
 
 class Filter(BaseModel):
     """Een enkel filtercriterium voor de SQL query."""
@@ -129,3 +131,7 @@ class ConversationState(TypedDict):
 
     # Output van describe_results node
     explanation: str | None
+
+    # Output van scenario_detection node
+    scenario_params: ScenarioParams | None
+    scenario_context: str | None

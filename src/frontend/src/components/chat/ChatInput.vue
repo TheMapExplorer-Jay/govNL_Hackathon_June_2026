@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import ButtonCallToAction from "@pzh-temporary/vue-component-library/src/components/ButtonCallToAction/ButtonCallToAction.vue";
 import { computed, nextTick, ref, watch } from "vue";
+import { useMapContext } from "../../composables/useMapContext";
 import { useSuggestions } from "../../composables/useSuggestions";
+
+const { activeContext, buildContextPrefix, formatLabel, clearContext } = useMapContext();
 
 const emit = defineEmits<{
 	send: [text: string];
@@ -51,7 +54,8 @@ const filteredSuggestions = computed(() => {
 function handleSubmit() {
 	if (!input.value.trim()) return;
 	showSuggestions.value = false;
-	emit("send", input.value);
+	const prefix = buildContextPrefix();
+	emit("send", prefix + input.value);
 	input.value = "";
 }
 
@@ -108,46 +112,90 @@ function handleBlur() {
 
 <template>
   <div class="chat-input">
-    <div class="input-wrapper">
-      <textarea
-        ref="textareaRef"
-        v-model="input"
-        :disabled="disabled"
-        placeholder="Stel een vraag over de ruimtelijke data..."
-        rows="1"
-        @keydown="handleKeydown"
-        @input="handleInput"
-        @blur="handleBlur"
-        @focus="handleInput"
-      />
-      <ul v-if="showSuggestions && filteredSuggestions.length > 0" class="autocomplete">
-        <li
-          v-for="(s, i) in filteredSuggestions"
-          :key="s"
-          :class="{ selected: i === selectedIndex }"
-          @mousedown.prevent="selectSuggestion(s)"
-        >
-          {{ s }}
-        </li>
-      </ul>
+    <div v-if="activeContext" class="context-pill">
+      <svg width="9" height="11" viewBox="0 0 13 16" fill="none">
+        <path d="M6.5 0C3 0 0 3 0 6.5c0 5 6.5 9.5 6.5 9.5S13 11.5 13 6.5C13 3 10 0 6.5 0z" fill="#3b82f6"/>
+        <circle cx="6.5" cy="6.5" r="2.5" fill="white"/>
+      </svg>
+      <span>{{ formatLabel() }}</span>
+      <button class="pill-clear" @click="clearContext()">✕</button>
     </div>
-    <ButtonCallToAction
-      text="Verstuur"
-      size="small"
-      :is-disabled="disabled || !input.trim()"
-      @click="handleSubmit"
-    />
+    <div class="input-row">
+      <div class="input-wrapper">
+        <textarea
+          ref="textareaRef"
+          v-model="input"
+          :disabled="disabled"
+          :placeholder="activeContext ? `Stel een vraag over het geselecteerde gebied…` : `Stel een vraag over de ruimtelijke data…`"
+          rows="1"
+          @keydown="handleKeydown"
+          @input="handleInput"
+          @blur="handleBlur"
+          @focus="handleInput"
+        />
+        <ul v-if="showSuggestions && filteredSuggestions.length > 0" class="autocomplete">
+          <li
+            v-for="(s, i) in filteredSuggestions"
+            :key="s"
+            :class="{ selected: i === selectedIndex }"
+            @mousedown.prevent="selectSuggestion(s)"
+          >
+            {{ s }}
+          </li>
+        </ul>
+      </div>
+      <ButtonCallToAction
+        text="Verstuur"
+        size="small"
+        :is-disabled="disabled || !input.trim()"
+        @click="handleSubmit"
+      />
+    </div>
   </div>
 </template>
 
 <style scoped>
 .chat-input {
   display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.4rem;
   padding: 0.75rem;
   border-top: 1px solid #e0e0e0;
   background: white;
+}
+
+.context-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  color: #1d4ed8;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.pill-clear {
+  background: none;
+  border: none;
+  color: #93c5fd;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.pill-clear:hover {
+  color: #3b82f6;
+}
+
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
 }
 
 .input-wrapper {

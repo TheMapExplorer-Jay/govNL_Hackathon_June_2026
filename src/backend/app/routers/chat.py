@@ -33,10 +33,12 @@ router = APIRouter()
 CUSTOM_EVENT_TO_SSE = {
     "map_block": "map_config",
     "map_data": "map_data",
+    "sql_block": "sql_block",
     "follow_up_text": "text",
     "status": "status",
     "error": "error",
     "step_thinking_summary": "step_thinking_summary",
+    "assumption_log": "assumption_log",
 }
 
 MAX_TITLE_LENGTH = 100
@@ -132,6 +134,8 @@ async def chat(
         "query_result": None,
         "map_plan": None,
         "explanation": None,
+        "scenario_params": None,
+        "scenario_context": None,
     }
 
     async def event_generator():

@@ -4,11 +4,27 @@ export interface ThinkingSummary {
 }
 
 export const THINKING_STEP_LABELS: Record<string, string> = {
+	scenario: "Analyseren of dit een what-if scenariovraag is",
 	intentie: "Begrijpen wat de intentie van je vraag is",
 	validatie: "Controleren of de filterwaarden kloppen",
 	sql: "Vertalen van de vraag naar een database-query",
 	kaart: "Bepalen hoe de resultaten gevisualiseerd worden",
 };
+
+export interface AssumptionLog {
+	is_scenario_question: boolean;
+	scenario_type: string;
+	title: string;
+	horizon_year: number;
+	salinity_duration_weeks: number | null;
+	population_growth_pct: number | null;
+	climate_scenario: string | null;
+	intake_points_disabled: string[];
+	datasets_to_use: string[];
+	assumptions: string[];
+	limitations: string[];
+	stakeholder_impacts: Record<string, string>;
+}
 
 export interface MessageFeedback {
 	rating: "up" | "down";
@@ -26,6 +42,7 @@ export interface ChatMessage {
 	isStreaming?: boolean;
 	thinkingSummaries?: ThinkingSummary[];
 	feedback?: MessageFeedback | null;
+	assumptionLog?: AssumptionLog | null;
 }
 
 export interface ColorRole {
@@ -61,9 +78,11 @@ export type SSEEventType =
 	| "text"
 	| "map_config"
 	| "map_data"
+	| "sql_block"
 	| "error"
 	| "status"
 	| "step_thinking_summary"
+	| "assumption_log"
 	| "done";
 
 export interface SSEEvent {

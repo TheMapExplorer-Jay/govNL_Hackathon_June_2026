@@ -40,6 +40,31 @@ The user is asking about the change in {{ year_comparison.column }} from {{ year
 - The map shows the difference column
 {% endif %}
 
+{% if scenario_params and scenario_params.is_scenario_question %}
+## Scenario Parameters
+This is a **what-if scenario** with these parameters:
+- Title: {{ scenario_params.title }}
+- Type: {{ scenario_params.scenario_type }}
+- Horizon year: {{ scenario_params.horizon_year }}
+{% if scenario_params.salinity_duration_weeks %}- Salinity duration: {{ scenario_params.salinity_duration_weeks }} weeks{% endif %}
+{% if scenario_params.population_growth_pct %}- Population growth: {{ scenario_params.population_growth_pct }}%{% endif %}
+{% if scenario_params.climate_scenario %}- KNMI climate scenario: {{ scenario_params.climate_scenario }}{% endif %}
+
+Datasets used: {{ scenario_params.datasets_to_use | join(", ") }}
+
+Assumptions:
+{% for a in scenario_params.assumptions %}- {{ a }}
+{% endfor %}
+
+Limitations:
+{% for l in scenario_params.limitations %}- {{ l }}
+{% endfor %}
+
+Stakeholder impacts:
+{% for stakeholder, impact in scenario_params.stakeholder_impacts.items() %}- **{{ stakeholder }}**: {{ impact }}
+{% endfor %}
+{% endif %}
+
 ## Instructions
 - Write a concise, informative response in Dutch
 - Do not make assumptions; use the data and instructions for your response
@@ -60,3 +85,12 @@ The user is asking about the change in {{ year_comparison.column }} from {{ year
 - If there was an error or no results, explain what went wrong and suggest an alternative question
 - Do NOT use code blocks or SQL in your response
 - Keep the response concise: 2-5 sentences for simple questions, at most a short paragraph for more complex analyses
+{% if scenario_params and scenario_params.is_scenario_question %}
+- This is a scenario question: after your main description, add a section **"## Aannames en begrenzingen"** that lists:
+  1. The datasets used (bullet list)
+  2. The key assumptions (bullet list, from the scenario parameters above)
+  3. The key limitations (bullet list)
+  4. Relevant stakeholder impacts (bullet list)
+  5. A note about the time horizon: "Deze analyse gebruikt een **{{ scenario_params.horizon_year }}-horizon** op basis van huidige infrastructuurdata."
+- Keep this assumptions section factual and auditable — it is required for policy transparency (Woo-compliant).
+{% endif %}

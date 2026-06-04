@@ -62,4 +62,6 @@ def graph_base_state(graph_mock_dictionary) -> dict:
         "query_result": None,
         "map_plan": None,
         "explanation": None,
+        "scenario_params": None,
+        "scenario_context": None,
     }

@@ -5,6 +5,7 @@ from app.services.nodes.describe_results import DescribeResultsNode
 from app.services.nodes.execute_query import ExecuteQueryNode
 from app.services.nodes.intent import IntentNode
 from app.services.nodes.plan_visualization import PlanVisualizationNode
+from app.services.nodes.scenario import ScenarioNode
 from app.services.nodes.spatial import SpatialNode
 from app.services.nodes.sql_generation import SqlGenerationNode
 from app.services.nodes.validate_filters import ValidateFiltersNode
@@ -32,6 +33,7 @@ def create_workflow():
     """Bouw en compileer de LangGraph workflow."""
     graph = StateGraph(ConversationState)
 
+    graph.add_node("detect_scenario", ScenarioNode())
     graph.add_node("check_intent", IntentNode())
     graph.add_node("resolve_spatial", SpatialNode())
     graph.add_node("validate_filters", ValidateFiltersNode())
@@ -40,7 +42,8 @@ def create_workflow():
     graph.add_node("plan_visualization", PlanVisualizationNode())
     graph.add_node("describe_results", DescribeResultsNode())
 
-    graph.set_entry_point("check_intent")
+    graph.set_entry_point("detect_scenario")
+    graph.add_edge("detect_scenario", "check_intent")
     graph.add_conditional_edges(
         "check_intent",
         route_after_intent,

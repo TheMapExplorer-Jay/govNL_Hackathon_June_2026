@@ -14,6 +14,7 @@ from app.services.nodes.describe_results import DescribeResultsNode
 from app.services.nodes.execute_query import ExecuteQueryNode
 from app.services.nodes.intent import IntentNode
 from app.services.nodes.plan_visualization import PlanVisualizationNode
+from app.services.nodes.scenario import ScenarioNode
 from app.services.nodes.spatial import SpatialNode
 from app.services.nodes.sql_generation import SqlGenerationNode
 from app.services.nodes.validate_filters import ValidateFiltersNode
@@ -56,6 +57,11 @@ def _intent_run(intent_analysis: IntentAnalysis, *, needs_spatial: bool = False)
 def _noop_run():
     """AsyncMock for a node's run that returns an empty state update."""
     return AsyncMock(return_value={})
+
+
+def _scenario_noop_run():
+    """AsyncMock for ScenarioNode.run — passthrough with no scenario detected."""
+    return AsyncMock(return_value={"scenario_params": None, "scenario_context": None})
 
 
 def _sql_run(sql: str = "SELECT h3_id, verkeer_totaal_2020 FROM dataset"):
@@ -118,6 +124,7 @@ class TestRoutingMocked:
         Catches the regression where a node change makes ambiguous queries appear
         clear, causing the graph to generate SQL it should not."""
         with (
+            patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(IntentNode, "run", _intent_run(_ambiguous_intent())),
             patch(
                 "app.services.nodes.base.adispatch_custom_event",
@@ -137,6 +144,7 @@ class TestRoutingMocked:
         is not entered and pdok_used stays False in the final state.
         Catches inadvertent routing into the spatial branch."""
         with (
+            patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(
                 IntentNode, "run", _intent_run(_clear_intent(), needs_spatial=False)
             ),
@@ -167,6 +175,7 @@ class TestRoutingMocked:
             "pdok_used": True,
         }
         with (
+            patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(
                 IntentNode, "run", _intent_run(_clear_intent(), needs_spatial=True)
             ),
@@ -193,6 +202,7 @@ class TestRoutingMocked:
         the graph exits before SQL generation and sql_query stays None.
         Catches route_after_validation being bypassed."""
         with (
+            patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(IntentNode, "run", _intent_run(_clear_intent())),
             patch.object(
                 ValidateFiltersNode,
@@ -225,6 +235,7 @@ class TestStateMocked:
         and explanation — all non-null — with no query_error.
         Catches any node silently dropping its state write."""
         with (
+            patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(IntentNode, "run", _intent_run(_clear_intent())),
             patch.object(ValidateFiltersNode, "run", _noop_run()),
             patch.object(SqlGenerationNode, "run", _sql_run()),
@@ -253,6 +264,7 @@ class TestStateMocked:
         Pins PlanVisualizationNode's skip guard and DescribeResultsNode's
         'always runs' contract simultaneously."""
         with (
+            patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(IntentNode, "run", _intent_run(_clear_intent())),
             patch.object(ValidateFiltersNode, "run", _noop_run()),
             patch.object(SqlGenerationNode, "run", _sql_run()),
@@ -279,6 +291,7 @@ class TestStateMocked:
         (not count) fires and map_plan stays None — but explanation is still written.
         Pins the early-return guard in PlanVisualizationNode."""
         with (
+            patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(IntentNode, "run", _intent_run(_clear_intent())),
             patch.object(ValidateFiltersNode, "run", _noop_run()),
             patch.object(SqlGenerationNode, "run", _sql_run()),
@@ -306,6 +319,7 @@ class TestStateMocked:
             "SELECT h3_id, verkeer_totaal_2020 FROM dataset WHERE gemeente = 'Delft'"
         )
         with (
+            patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(IntentNode, "run", _intent_run(_clear_intent())),
             patch.object(ValidateFiltersNode, "run", _noop_run()),
             patch.object(SqlGenerationNode, "run", _sql_run(expected_sql)),
@@ -348,6 +362,7 @@ class TestStateMocked:
         mock_prompt.__or__ = MagicMock(return_value=mock_chain)
 
         with (
+            patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(IntentNode, "_PROMPT", mock_prompt),
             patch("app.services.nodes.intent.make_llm", return_value=MagicMock()),
             patch.object(ValidateFiltersNode, "run", _noop_run()),

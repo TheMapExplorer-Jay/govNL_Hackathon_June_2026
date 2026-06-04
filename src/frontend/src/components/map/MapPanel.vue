@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useMap } from "../../composables/useMap";
+import LayerControl from "./LayerControl.vue";
+import MapContextPicker from "./MapContextPicker.vue";
 import MapLegend from "./MapLegend.vue";
 
 const {
@@ -47,6 +49,8 @@ onMounted(() => {
         <svg viewBox="0 0 10 6" width="10" height="6"><path d="M1 1 L5 5 L9 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
+    <LayerControl />
+    <MapContextPicker />
     <MapLegend
       v-if="legend || heightLegend || iconLegend || categoryLegend"
       :legend="legend"

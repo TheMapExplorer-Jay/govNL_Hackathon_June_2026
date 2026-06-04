@@ -4,6 +4,45 @@ import { useDataDictionary } from "../../composables/useDataDictionary";
 import { useSuggestions } from "../../composables/useSuggestions";
 import type { TableInfo, Theme } from "../../types/dictionary";
 
+const SCENARIO_PRESETS = [
+  {
+    id: "salinity_shock",
+    label: "Hollandse IJssel — verzilting 6 weken",
+    question:
+      "Wat is de impact op de drinkwaterproductie als de Hollandse IJssel 6 weken onbruikbaar is door verzilting?",
+  },
+  {
+    id: "combined_shock",
+    label: "Droogte + uitval inname + bevolkingsgroei",
+    question:
+      "Wat gebeurt er met de drinkwaterzekerheid als droogte, het uitvallen van een innamepunt, en een bevolkingspiekbelasting gelijktijdig optreden?",
+  },
+  {
+    id: "population_growth",
+    label: "80.000 nieuwe woningen Zuidelijke Randstad",
+    question:
+      "Wat betekent 80.000 nieuwe woningen in de Zuidelijke Randstad voor de drinkwatervraag en de druk op bodem en ondergrond?",
+  },
+  {
+    id: "opportunity",
+    label: "Natuur in intrekgebieden — kansen veerkracht",
+    question:
+      "Waar in Zuid-Holland biedt natuurherstel in intrekgebieden de grootste verbetering van de drinkwaterrobuustheid?",
+  },
+  {
+    id: "regulation",
+    label: "KRW-handhaving en landbouw",
+    question:
+      "Als KRW-handhaving leidt tot beperkingen op landbouw rondom grondwaterbeschermingszones, welke gebieden zijn dan getroffen?",
+  },
+  {
+    id: "climate_stress",
+    label: "KNMI W+ klimaatscenario 2040",
+    question:
+      "Hoe gedraagt de drinkwaterproductie zich onder het droge KNMI W+-klimaatscenario gecombineerd met toenemende verzilting op de Hollandse IJssel?",
+  },
+];
+
 const emit = defineEmits<{
 	select: [question: string];
 }>();
@@ -40,11 +79,25 @@ const themesWithGroups = computed(() => {
 <template>
   <div v-if="dictionary" class="suggestions">
     <div class="intro">
-      <p class="intro-heading">Ruimtelijke data-assistent voor de Provincie Zuid-Holland</p>
+      <p class="intro-heading">Drinkwaterzekerheid 2040 — Provincie Zuid-Holland</p>
       <p class="intro-text">
-        Stel vragen over ruimtelijke data op H3-hexagonen.
-        Beschikbare thema's zijn o.a. netcapaciteit, luchtkwaliteit, geluid, verkeer, OV-haltes en woningbouw.
+        Stel beschrijvende vragen over ruimtelijke data, of verken een <strong>what-if scenario</strong>
+        over drinkwaterrobuustheid in 2040 door klimaatdruk, bevolkingsgroei en regelgeving.
       </p>
+    </div>
+
+    <div class="scenario-section">
+      <p class="scenario-title">Scenario's verkennen</p>
+      <div class="scenario-chips">
+        <button
+          v-for="preset in SCENARIO_PRESETS"
+          :key="preset.id"
+          class="scenario-chip"
+          @click="emit('select', preset.question)"
+        >
+          {{ preset.label }}
+        </button>
+      </div>
     </div>
 
     <details class="data-info">
@@ -223,6 +276,41 @@ const themesWithGroups = computed(() => {
   font-size: 0.68rem;
   font-weight: 600;
   vertical-align: middle;
+}
+
+.scenario-section {
+  margin-bottom: 1rem;
+}
+
+.scenario-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.4rem;
+}
+
+.scenario-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.scenario-chip {
+  padding: 0.3rem 0.75rem;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.scenario-chip:hover {
+  background: #fef3c7;
+  border-color: #d97706;
 }
 
 .suggestions-title {

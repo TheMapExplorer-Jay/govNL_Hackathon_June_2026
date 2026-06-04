@@ -1,5 +1,15 @@
 @import "maplibre-gl/dist/maplibre-gl.css";
 
+/* Map location-pin marker — rendered outside Vue scope by MapLibre */
+.map-pin-marker {
+	cursor: pointer;
+	filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+	transition: transform 0.1s;
+}
+.map-pin-marker:hover {
+	transform: scale(1.15);
+}
+
 @font-face {
 	font-family: Karbon;
 	src: url("https://cdn-pzh.azureedge.net/web/fonts/karbon-web-regular.woff2")

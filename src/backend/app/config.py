@@ -12,7 +12,20 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # GreenPT (hackathon-supplied provider)
     GREENPT_KEY: str = ""
+
+    # Standard OpenAI fallback — used when GREENPT_KEY is empty
+    OPENAI_API_KEY: str = ""
+
+    # Optional override for the LLM base URL.
+    # Defaults to GreenPT when GREENPT_KEY is set, openai.com otherwise.
+    LLM_BASE_URL: str = ""
+
+    # Load extra datasets (CBS, LGN, woondeals) from extra_data/.
+    # Off by default: extra columns inflate the LLM prompt and reduce accuracy.
+    # Enable only when your scenario specifically needs CBS or woondeals data.
+    LOAD_EXTRA_DATA: bool = False
 
     ALLOWED_ORIGINS: str = "*"
     DEBUG: bool = False

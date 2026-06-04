@@ -18,6 +18,17 @@ tables are explicitly required by the intent.
 {% endfor %}
 {% endfor %}
 
+{% if scenario_context %}
+## Scenario Context
+
+{{ scenario_context }}
+
+This is a **what-if scenario query**. Apply the scenario context above:
+- JOIN the tables identified in the context on `h3_id`
+- Apply filters that spatially represent the scenario condition
+- The result should show the overlap between the affected infrastructure and the scenario pressure
+
+{% endif %}
 ## User Intent
 
 Convert the structured intent below into a DuckDB SQL query.

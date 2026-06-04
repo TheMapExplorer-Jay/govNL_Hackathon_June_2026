@@ -163,6 +163,20 @@ Question: "Woningbouw binnen 5 km van alle N2000-gebieden"
 Question: "Areas within 10 km of Rotterdam"
 → topic is unclear: ask which data the user wants to see in that area
 
+{% if scenario_context %}
+## Scenario-toelichting
+
+Dit is een **what-if scenariovraag**. De scenario-analyser heeft het volgende context opgesteld:
+
+{{ scenario_context }}
+
+Gebruik deze toelichting om:
+1. De `relevant_columns` te selecteren uit MEERDERE thema's/tabellen (multi-theme query noodzakelijk)
+2. De juiste JOIN-kolommen te identificeren (altijd via `h3_id`)
+3. De vraag als `is_clear: true` te beoordelen — scenariovragen zijn per definitie duidelijk als de context aanwezig is
+4. Filters te formuleren die het scenario ruimtelijk afbakenen
+
+{% endif %}
 ## Important rules:
 - The dataset contains data on Zuid-Holland.
 - ALWAYS answer in Dutch

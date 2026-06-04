@@ -3,6 +3,7 @@ import { marked } from "marked";
 import { computed } from "vue";
 import type { ChatMessage } from "../../types/chat";
 import { formatNumber } from "../../utils/formatting";
+import AssumptionsBlock from "./AssumptionsBlock.vue";
 import MessageFeedback from "./MessageFeedback.vue";
 import ThinkingSummaryBlock from "./ThinkingSummaryBlock.vue";
 
@@ -37,6 +38,11 @@ const renderedContent = computed(() => {
         {{ formatNumber(message.queryResults.length) }} resultaten gevonden
       </div>
     </div>
+
+    <AssumptionsBlock
+      v-if="message.role === 'assistant' && message.assumptionLog?.is_scenario_question"
+      :log="message.assumptionLog!"
+    />
 
     <MessageFeedback
       v-if="

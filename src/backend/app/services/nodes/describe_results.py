@@ -59,6 +59,7 @@ class DescribeResultsNode(BaseNode):
             "map_plan": state.get("map_plan"),
             "limit": state["intent_analysis"].intent.limit,
             "year_comparison": state["intent_analysis"].intent.year_comparison,
+            "scenario_params": state.get("scenario_params"),
             "col_metadata": _columns_block(
                 state["dictionary"],
                 list(sample[0].keys()) if sample else [],
