@@ -80,35 +80,21 @@ has its own column set; the spatial key `h3_id` is present on every table.
 
 
 
-5. CONFIDENCE SCORING (0.0 to 1.0):
-   Evaluate how clear and unambiguous the question is, and assign a confidence score based on the following scale:
-   - 0.9-1.0: Completely unambiguous - all parameters are explicit
-   - 0.7-0.9: Minor ambiguity - reasonable defaults can be safely applied
-   - 0.5-0.6: Moderate ambiguity - some interpretation required, clarification preferred
-   - 0.0-0.4: Significant ambiguity - clarification strongly recommended
+5. CONFIDENCE SCORING (0.0–1.0):
+   - ≥0.9: all parameters explicit → is_clear: true
+   - <0.9: ambiguity present → is_clear: false, ask follow-up
 
 
 ## Output format
 
-If all elements are clear (CONFIDENCE SCORE >=0.9):
-   - `is_clear`: true
-   - `intent`:
-      - `description`: what the user wants to see
-      - `relevant_columns`: required columns for SELECT (including always 'h3_id')
-      - `filters`: list of {"table": "...", "column": "...", "operator": "...", "value": "..."}
-         - ALWAYS set `table` to the exact table name from the schema above that contains the column
-         - Add location filter if the user specifies a location
-         - Add other filters if the user specifies a filter
-         - NEVER add a `year` filter — years are encoded in column names
-      - `aggregation`: {"column": "...", "function": "...", "level": ["..."]} or null if no aggregation is specified
-         - `column`: the column to aggregate
-         - `function`: AVG, SUM, COUNT, MIN, MAX, or MODE
-         - `level`: list of columns to group by (e.g. ["gemeente_Gemeentenaam"]), or null if aggregating over the entire filtered result (one area)
-      - `limit`: integer for top-N questions (e.g. "top 5" → 5, "which area has the highest/lowest" → 1), null if all results are needed
+**Clear (score ≥0.9)** → `is_clear: true`, populate `intent`:
+- `description`: what the user wants
+- `relevant_columns`: SELECT columns (always include `h3_id`)
+- `filters`: list of `{table, column, operator, value}` — `table` must be exact table name; never add a `year` filter
+- `aggregation`: `{column, function (AVG/SUM/COUNT/MIN/MAX/MODE), level}` or null
+- `limit`: integer for top-N (e.g. "top 5" → 5, "highest/lowest" → 1), else null
 
-If one or more mentioned elements are ambiguous (CONFIDENCE SCORE <0.9):
-    - `is_clear`: false
-    - `follow_up_question`: combine ALL ambiguities into ONE question with numbered items and explicit options
+**Ambiguous (score <0.9)** → `is_clear: false`, `follow_up_question`: one message combining ALL ambiguities with numbered items and explicit options
 
     Example follow-up question:
     1. 'inkomen' kan verwijzen naar meerdere kolommen:
@@ -153,9 +139,6 @@ Question: "Wat is de NO2 concentratie in 2025 binnen 5 km van Zoetermeer?"
 Question: "Show greenery within 2 km of Rotterdam Centraal"
 → spatial_query: {"origin_filters": [{"column": "h3_spatial_filter", "operator": "=", "value": "PLACE:Rotterdam Centraal"}], "k_rings": 6}
 
-Question: "What is the average noise level within 1 km of the Erasmusbrug?"
-→ spatial_query: {"origin_filters": [{"column": "h3_spatial_filter", "operator": "=", "value": "PLACE:Erasmusbrug Rotterdam"}], "k_rings": 3}
-
 Question: "Woningbouw binnen 5 km van alle N2000-gebieden"
 → spatial_query: {"origin_filters": [{"column": "n2000_NAAM_N2K", "operator": "IS NOT NULL", "value": ""}], "k_rings": 15}
 → relevant_columns: ["h3_id", "woningbouw_Bouw_totaal"]
@@ -190,7 +173,4 @@ Gebruik deze toelichting om:
 
 ## Thinking summary
 
-Also populate the `thinking_summary` field in your structured output.
-Write a summary **in Dutch**, maximum 10 sentences, explaining what you were asked,
-how you analysed the question for ambiguities, and what you decided.
-Write in first person, concise and understandable for a non-technical user.
+Populate `thinking_summary` in Dutch, max 6 sentences, first person: what was asked, how you checked for ambiguity, what you decided.

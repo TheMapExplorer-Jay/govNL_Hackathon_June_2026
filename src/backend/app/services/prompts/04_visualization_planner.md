@@ -94,7 +94,4 @@ Otherwise, follow the appropriate branch:
 
 ## Thinking summary
 
-Also populate the `thinking_summary` field in your structured output.
-Write a summary **in Dutch**, maximum 10 sentences, explaining which columns were available,
-how you assigned them to visual channels (color, height, icons), and why.
-Write in first person, concise and understandable for a non-technical user.
+Populate `thinking_summary` in Dutch, max 4 sentences, first person: which columns were available, how you assigned them to color/height/icons, and why.

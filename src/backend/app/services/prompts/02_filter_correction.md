@@ -36,7 +36,4 @@ Try to correct the filter values:
 
 ## Thinking summary
 
-Also populate the `thinking_summary` field in your structured output.
-Write a summary **in Dutch**, maximum 10 sentences, explaining which filter values were invalid,
-how you evaluated the candidates, and what you corrected or why you are asking a follow-up question.
-Write in first person, concise and understandable for a non-technical user.
+Populate `thinking_summary` in Dutch, max 4 sentences, first person: which values were invalid, how you evaluated candidates, what you corrected or why you ask a follow-up.

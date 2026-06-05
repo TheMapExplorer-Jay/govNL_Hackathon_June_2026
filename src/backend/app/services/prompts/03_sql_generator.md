@@ -157,6 +157,4 @@ is generated downstream — do NOT emit any map config here.
 
 ## Thinking summary
 
-Also populate the `thinking_summary` field. Write **in Dutch**, max 10
-sentences, first person, explaining the user intent, the table you picked,
-and any notable SQL choices.
+Populate `thinking_summary` in Dutch, max 5 sentences, first person: intent, table chosen, key SQL decisions.

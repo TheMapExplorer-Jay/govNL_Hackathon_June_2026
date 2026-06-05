@@ -31,6 +31,11 @@ const renderedContent = computed(() => {
       />
     </div>
 
+    <AssumptionsBlock
+      v-if="message.role === 'assistant' && message.assumptionLog?.is_scenario_question"
+      :log="message.assumptionLog!"
+    />
+
     <div class="message-bubble">
       <div class="message-content markdown-body" v-html="renderedContent"></div>
 
@@ -38,11 +43,6 @@ const renderedContent = computed(() => {
         {{ formatNumber(message.queryResults.length) }} resultaten gevonden
       </div>
     </div>
-
-    <AssumptionsBlock
-      v-if="message.role === 'assistant' && message.assumptionLog?.is_scenario_question"
-      :log="message.assumptionLog!"
-    />
 
     <MessageFeedback
       v-if="
