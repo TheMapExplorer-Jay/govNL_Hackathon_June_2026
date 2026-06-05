@@ -1,16 +1,92 @@
-# AI Spatial Assistant
+# AI Spatial Assistant - LINK WATER addition
 
-A Dutch-language web application that lets non-technical users ask questions in plain Dutch about spatial datasets (organised in H3 hexagons). The application translates the question into SQL, executes it, and returns the answer as text and as an interactive map. This document is aimed at developers; a more detailed explanation for end-users is in the **About** page in the app ([src/frontend/src/components/info/MeerInfoPage.vue](src/frontend/src/components/info/MeerInfoPage.vue)).
+An addition to the Dutch-language web application that lets non-technical users ask questions in plain Dutch about spatial datasets (organised in H3 hexagons). The application translates the question into SQL, executes it, and returns the answer as text and as an interactive map. This document is aimed at developers; a more detailed explanation for end-users is in the **About** page in the app ([src/frontend/src/components/info/MeerInfoPage.vue](src/frontend/src/components/info/MeerInfoPage.vue)).
 
 ---
 
 ## OneGov #2: Drinkwaterzekerheid challenge
 
-This repository is the starting point for the **Drinkwaterzekerheid** challenge of the **OneGov #2** hackathon, hosted by [GovTech NL](https://govtechnl.nl) and challenge owner **Provincie Zuid-Holland (PZH)**.
+This repository is the result of grou **LINK WATER** for the **Drinkwaterzekerheid** challenge of the **OneGov #2** hackathon, hosted by [GovTech NL](https://govtechnl.nl) and challenge owner **Provincie Zuid-Holland (PZH)**.
+
 
 - **Date:** 4 and 5 June 2026
 - **Location:** The Hague Tech, Den Haag
-- **Challenge owners:** Sebastiaan Schmidt, Tim Padmos, Thijs Raterink (Provincie Zuid-Holland)
+- **Group participants:** Jay Lakkad, Jennifer Lyklema, Igor van Oostveen, Maaike Stoops
+
+This repository contains the results of Group waterlink as well as the original application. The additions include:
+- The Scenario Simulator prototype (see readme below)
+- Additions to the original application to allow for more explorative prompting and changing weights of contextual variables
+- Additions to allow for group chats between different stakeholders and the LLM to have a shared discussion and track the reasoning.
+
+
+## Scenario Simulator
+
+Een scenario-planningstool voor beleidsmakers, ontwikkeld in de context van **Provincie Zuid-Holland**. De applicatie helpt om complexe ruimtelijke en infrastructurele vraagstukken — zoals de vestiging van een hyperscale-datacenter — gestructureerd te verkennen, door te rekenen en beslisklaar te maken voor een bestuurlijke vergadering.
+
+---
+
+### De premisse
+
+Beleidsafwegingen rond grote ruimtelijke ingrepen zijn vaak versnipperd: context zit in losse documenten, aannames zijn impliciet, en de onderbouwing van scenario's is moeilijk herleidbaar. Dat maakt besluitvorming traag en kwetsbaar.
+
+**Scenario Simulator draait dat om.** Het uitgangspunt is dat een beleidsmaker via één begeleide flow — ondersteund door een AI-assistent — van een losse vraag naar een onderbouwd, deelbaar scenariodossier komt. De kernprincipes:
+
+- **Gespreksgedreven context-opbouw.** Een assistent stelt gerichte vragen om eerst het initiatief zelf (omvang, koeling, werkgelegenheid, infrastructuur) en daarna de externe factoren (klimaat, netcongestie, bevolking) helder te krijgen. De gebruiker hoeft geen formulier te kennen.
+- **Scheiding van vaste assen en variabelen.** De omvang van het initiatief is de *scenario-as* (de varianten die je vergelijkt). Contextfactoren zoals klimaat en netcongestie bewegen daarbinnen mee. Zo blijft helder waarom een scenario een scenario is.
+- **Herleidbaarheid.** Elke uitkomst is terug te voeren op een formule en een bron. De doorrekening is altijd opvraagbaar, zodat cijfers in een vergadering verdedigbaar zijn.
+- **Geschreven, leesbare output.** Beleidsmakers lezen. De uitkomst is daarom niet alleen een tabel maar ook een samenvatting en een conclusie in lopende tekst, met expliciete aandachtspunten.
+
+---
+
+### De flow (4 stappen)
+
+De applicatie is opgebouwd als een wizard met een stappen-indicator bovenaan:
+
+1. **Invoer & context** — De gebruiker beschrijft het beleidsvraagstuk en kan een bestaand beleidsstuk uploaden of koppelen. De assistent (rechts) opent met een welkom en drie startvragen om de context op te halen.
+2. **Variabelen** — Hier bepaalt de gebruiker (a) het **belang per thema** (Ruimte, Energie, Water, Economie, Woningbouw, Netcongestie) via schuifregelaars, en (b) **welke scenario's** doorgerekend worden: naam, omvang (MW) en motivatie per variant, met de mogelijkheid om er één, twee, drie of meer te configureren en de keuze te bevestigen. Vanaf deze stap is de assistent gevuld met een rijkere samenvatting van de context.
+3. **Scenario's** — Begint met de **conclusie** (inclusief de vraagstelling), gevolgd door een **kaartweergave** per scenario (gemeentelijk landgebruik met drukpunten en impactzone), een **impacttabel per thema** met aandachtspunt-markeringen, en onderaan een uitgebreide **samenvatting**. De volledige, herleidbare doorrekening is opvraagbaar via een pop-up.
+4. **Delen & bespreken** — Exporteren (PDF/XLSX/PPTX), delen met collega's, en een lijst met discussiepunten plus een voorlopige aanbeveling voor de vergadering.
+
+---
+
+### Belangrijkste functionaliteit
+
+- **Scenario-assistent (chat)** die de gebruiker door context en variabelen leidt; per stap met passende toon en suggesties.
+- **Configureerbare scenario's** — aantal, omvang en motivatie zijn vrij in te stellen; de hele tool rekent en tekent mee.
+- **Live doorrekening** van indicatoren (energievraag, ruimtebeslag, koelwater met klimaatcorrectie, werkgelegenheid, restwarmte, netbelasting, woningmarktdruk) op basis van de ingestelde variabelen.
+- **Aandachtspunten** worden automatisch gemarkeerd in de impacttabel (bv. een te sterke energievraagstijging of een vrijwel vol stroomnet).
+- **Kaartvisualisatie** per scenario: footprint, impactzone en omgevingsdrukpunten (woonkern, Natura 2000, hoogspanningsstation, waterwinning, glasvezel-knooppunt).
+- **Bewerkbare context & beslispunten** en een **variabelen-grid** (type, belang, waarde, bron, onderbouwing), oproepbaar als toelichting.
+- **Delen** met collega's en export voor besluitvorming.
+
+> **Let op:** de doorrekening gebruikt *mock-kengetallen* voor demonstratiedoeleinden. Vóór echte besluitvorming moeten deze worden vervangen door gevalideerde modelwaarden.
+
+---
+
+### Techniek
+
+- **React 18 + TypeScript**, gebouwd met **Vite**.
+- **Tailwind CSS** voor styling; **lucide-react** voor iconen.
+- Vlakke, toegankelijke UI in het kleurpalet van LINKIT (Boston Blue `#4191C2`, wit, donker `#23212C`).
+
+### Lokaal draaien
+
+```bash
+npm install
+npm run dev          # lokaal op http://localhost:5173
+npm run dev -- --host  # ook bereikbaar op het lokale netwerk
+```
+
+Vereist Node.js (LTS).
+
+---
+
+### Status
+
+Interactief prototype / designvalidatie. Alle data en berekeningen zijn voorbeelden (casus: *Datacenter Zoeterwoude*); er is nog geen backend, persistente opslag of echte AI-koppeling.
+
+
+## Original brief
 - **Full brief (English working translation):** [CHALLENGE.md](CHALLENGE.md)
 - **Original brief (PDF, NL):** [OneGov_2_Challenge_Brief_Drinkwaterzekerheid.pdf](OneGov_2_Challenge_Brief_Drinkwaterzekerheid.pdf)
 - **Submission:** via [Alkemio](https://alkem.io/onegov-hackathon/challenges/ruimtelijkeassistentdrink).
