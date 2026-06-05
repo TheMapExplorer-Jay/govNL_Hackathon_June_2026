@@ -18,6 +18,12 @@ const isStreaming = ref(false);
 const model = ref("gemma4");
 const sessionId = ref<string | null>(null);
 
+// Workflow progress tracking (module-level so WorkflowProgress.vue can read it)
+export const workflowStep = ref<string | null>(null);
+export const workflowCompleted = ref<string[]>([]);
+export const progressVisible = ref(false);
+let _progressTimer: ReturnType<typeof setTimeout> | null = null;
+
 export function useChat() {
 	const { executeQuery } = useDuckDB();
 	const { updateHexagons } = useMap();
@@ -46,6 +52,12 @@ export function useChat() {
 
 		isStreaming.value = true;
 		abortController = new AbortController();
+
+		// Reset pipeline progress for the new turn
+		if (_progressTimer) clearTimeout(_progressTimer);
+		workflowStep.value = null;
+		workflowCompleted.value = [];
+		progressVisible.value = true;
 
 		const history = messages.value
 			.filter((m) => !m.isStreaming)
@@ -102,12 +114,17 @@ export function useChat() {
 						}
 						case "status": {
 							const parsed = JSON.parse(data);
-							if (
-								parsed.status === "active" &&
-								parsed.step in THINKING_STEP_LABELS
-							) {
-								msg.thinkingSummaries ??= [];
-								msg.thinkingSummaries.push({ step_id: parsed.step });
+							if (parsed.status === "active") {
+								// Thinking summaries (existing)
+								if (parsed.step in THINKING_STEP_LABELS) {
+									msg.thinkingSummaries ??= [];
+									msg.thinkingSummaries.push({ step_id: parsed.step });
+								}
+								// Progress bar: move previous active step to completed
+								if (workflowStep.value && !workflowCompleted.value.includes(workflowStep.value)) {
+									workflowCompleted.value = [...workflowCompleted.value, workflowStep.value];
+								}
+								workflowStep.value = parsed.step;
 							}
 							break;
 						}
@@ -153,6 +170,14 @@ export function useChat() {
 								.replace(/```map\s*\n[\s\S]*?```/g, "")
 								.replace(/[▀-▟]/g, "")
 								.trim();
+							// Complete the last active step and hold for 1.5 s then hide
+							if (workflowStep.value && !workflowCompleted.value.includes(workflowStep.value)) {
+								workflowCompleted.value = [...workflowCompleted.value, workflowStep.value];
+							}
+							workflowStep.value = null;
+							_progressTimer = setTimeout(() => {
+								progressVisible.value = false;
+							}, 1500);
 							break;
 						}
 					}

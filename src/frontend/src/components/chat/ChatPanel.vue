@@ -10,6 +10,7 @@ import { useSessions } from "../../composables/useSessions";
 import ChatInput from "./ChatInput.vue";
 import ChatMessage from "./ChatMessage.vue";
 import SuggestionChips from "./SuggestionChips.vue";
+import WorkflowProgress from "./WorkflowProgress.vue";
 
 const {
 	messages,
@@ -186,6 +187,8 @@ watch(
         />
       </template>
     </div>
+
+    <WorkflowProgress />
 
     <ChatInput
       :disabled="isStreaming || !dbReady || dictionaryLoading || !!dictionaryError"
