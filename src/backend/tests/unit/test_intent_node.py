@@ -30,7 +30,7 @@ def _patch_node(result: IntentAnalysis):
     mock_prompt.__or__ = MagicMock(return_value=chain)
     return (
         patch.object(IntentNode, "_PROMPT", mock_prompt),
-        patch("app.services.nodes.intent.make_llm", return_value=MagicMock()),
+        patch("app.services.nodes.intent.make_fast_llm", return_value=MagicMock()),
     )
 
 

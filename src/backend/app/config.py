@@ -27,10 +27,16 @@ class Settings(BaseSettings):
     # Enable only when your scenario specifically needs CBS or woondeals data.
     LOAD_EXTRA_DATA: bool = False
 
+    # Two-tier model strategy:
+    # FAST_MODEL  — routing, classification, filter correction (low latency)
+    # ANALYSIS_MODEL — SQL generation and result narration (higher quality)
+    FAST_MODEL: str = "mistral-small-3.2-24b-instruct-2506"
+    ANALYSIS_MODEL: str = "gemma4"
+
     ALLOWED_ORIGINS: str = "*"
     DEBUG: bool = False
     DICTIONARY_CACHE: bool = True
-    OPENAI_MODEL: str = "gemma4"
+    OPENAI_MODEL: str = "gemma4"  # legacy: used by the frontend default picker
     PORT: int = 8000
     DATABASE_URL: str = (
         "postgresql+asyncpg://ruimtelijke:secret123!@localhost:5432/sessions"

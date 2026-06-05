@@ -9,7 +9,7 @@ from app.services.helpers.filter_candidates import build_fallback_question
 from app.services.helpers.filter_validation import collect_invalid_filters
 from app.services.helpers.prompt_helpers import format_intent_section, load_prompt
 from app.services.helpers.tables import register_tables
-from app.services.llm import make_llm
+from app.services.llm import make_fast_llm
 from app.services.nodes.base import BaseNode
 
 
@@ -70,7 +70,7 @@ class ValidateFiltersNode(BaseNode):
             return {}
 
         corrected = await self._correct_filters(
-            state["model"], intent, invalid, is_final_attempt=False, config=config
+            intent, invalid, is_final_attempt=False, config=config
         )
 
         if not corrected.is_clear:
@@ -91,7 +91,6 @@ class ValidateFiltersNode(BaseNode):
             return {"intent_analysis": corrected}
 
         final = await self._correct_filters(
-            state["model"],
             corrected.intent,
             still_invalid,
             is_final_attempt=True,
@@ -145,7 +144,6 @@ class ValidateFiltersNode(BaseNode):
 
     async def _correct_filters(
         self,
-        model: str,
         intent: Intent,
         invalid_filters: list[InvalidFilter],
         *,
@@ -153,8 +151,8 @@ class ValidateFiltersNode(BaseNode):
         config: RunnableConfig,
     ) -> IntentAnalysis:
         """Call the correction LLM to resolve invalid filter values."""
-        chain = self._CORRECTION_PROMPT | make_llm(
-            model, streaming=False
+        chain = self._CORRECTION_PROMPT | make_fast_llm(
+            streaming=False
         ).with_structured_output(IntentAnalysis)
         result: IntentAnalysis = await chain.ainvoke(
             {

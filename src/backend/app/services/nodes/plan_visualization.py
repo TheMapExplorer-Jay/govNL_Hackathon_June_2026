@@ -8,7 +8,7 @@ from app.services.helpers.prompt_helpers import (
     load_prompt,
 )
 from app.services.nodes.describe_results import _columns_block
-from app.services.llm import make_llm
+from app.services.llm import make_fast_llm
 from app.services.nodes.base import BaseNode
 
 
@@ -55,8 +55,8 @@ class PlanVisualizationNode(BaseNode):
         ):
             return {"map_plan": None}
 
-        chain = self._PROMPT | make_llm(
-            state["model"], streaming=False
+        chain = self._PROMPT | make_fast_llm(
+            streaming=False
         ).with_structured_output(MapPlan)
         plan: MapPlan = await chain.ainvoke(self._build_context(state))
 

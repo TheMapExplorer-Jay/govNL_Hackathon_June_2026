@@ -95,11 +95,11 @@ function cssColor(color: [number, number, number]): string {
 .layer-control {
   position: absolute;
   bottom: 32px;
-  left: 10px;
+  right: 10px;
   z-index: 10;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 4px;
 }
 
@@ -144,6 +144,7 @@ function cssColor(color: [number, number, number]): string {
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   min-width: 220px;
   max-width: 260px;
+  right: 0;
   max-height: 360px;
   display: flex;
   flex-direction: column;

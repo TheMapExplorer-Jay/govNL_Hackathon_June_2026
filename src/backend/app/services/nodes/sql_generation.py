@@ -3,7 +3,7 @@ from langchain_core.runnables import RunnableConfig
 
 from app.models.state import ConversationState, SqlGenerationOutput
 from app.services.helpers.prompt_helpers import format_intent_section, load_prompt
-from app.services.llm import make_llm
+from app.services.llm import make_analysis_llm
 from app.services.nodes.base import BaseNode
 
 
@@ -28,8 +28,8 @@ class SqlGenerationNode(BaseNode):
         }
 
     async def run(self, state: ConversationState, config: RunnableConfig) -> dict:
-        chain = self._PROMPT_DUCKDB | make_llm(
-            state["model"], streaming=False
+        chain = self._PROMPT_DUCKDB | make_analysis_llm(
+            streaming=False
         ).with_structured_output(SqlGenerationOutput)
         parsed: SqlGenerationOutput = await chain.ainvoke(self._build_context(state))
 

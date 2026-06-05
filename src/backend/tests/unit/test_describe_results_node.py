@@ -46,7 +46,7 @@ def _patch_node(text: str):
     mock_prompt.__or__ = MagicMock(return_value=chain)
     return (
         patch.object(DescribeResultsNode, "_PROMPT", mock_prompt),
-        patch("app.services.nodes.describe_results.make_llm", return_value=MagicMock()),
+        patch("app.services.nodes.describe_results.make_analysis_llm", return_value=MagicMock()),
     )
 
 

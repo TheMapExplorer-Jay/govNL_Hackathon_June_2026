@@ -60,7 +60,7 @@ def _patch_node(plan: MapPlan):
     return (
         patch.object(PlanVisualizationNode, "_PROMPT", mock_prompt),
         patch(
-            "app.services.nodes.plan_visualization.make_llm", return_value=MagicMock()
+            "app.services.nodes.plan_visualization.make_fast_llm", return_value=MagicMock()
         ),
     )
 

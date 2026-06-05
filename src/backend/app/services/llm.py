@@ -24,8 +24,6 @@ def _resolve_credentials() -> tuple[str, str]:
     if settings.OPENAI_API_KEY:
         return settings.OPENAI_API_KEY, _OPENAI_BASE
 
-    # Neither key configured — return empty; the API call will fail with a
-    # clear 401 rather than a confusing KeyError.
     return "", _GREENPT_BASE
 
 
@@ -42,3 +40,13 @@ def make_llm(model: str, *, streaming: bool = False) -> ChatOpenAI:
     if not is_reasoning:
         kwargs["temperature"] = 0.1
     return ChatOpenAI(**kwargs)
+
+
+def make_fast_llm(*, streaming: bool = False) -> ChatOpenAI:
+    """Fast model for routing/classification nodes (scenario, intent, filter-correction, viz-plan)."""
+    return make_llm(settings.FAST_MODEL, streaming=streaming)
+
+
+def make_analysis_llm(*, streaming: bool = False) -> ChatOpenAI:
+    """Analysis model for generation nodes (SQL, result narration)."""
+    return make_llm(settings.ANALYSIS_MODEL, streaming=streaming)

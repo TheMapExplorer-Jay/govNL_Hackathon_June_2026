@@ -39,7 +39,7 @@ def _patch_node(chain: MagicMock):
     mock_prompt.__or__ = MagicMock(return_value=chain)
     return (
         patch.object(SqlGenerationNode, "_PROMPT_DUCKDB", mock_prompt),
-        patch("app.services.nodes.sql_generation.make_llm", return_value=MagicMock()),
+        patch("app.services.nodes.sql_generation.make_analysis_llm", return_value=MagicMock()),
     )
 
 

@@ -364,7 +364,7 @@ class TestStateMocked:
         with (
             patch.object(ScenarioNode, "run", _scenario_noop_run()),
             patch.object(IntentNode, "_PROMPT", mock_prompt),
-            patch("app.services.nodes.intent.make_llm", return_value=MagicMock()),
+            patch("app.services.nodes.intent.make_fast_llm", return_value=MagicMock()),
             patch.object(ValidateFiltersNode, "run", _noop_run()),
             patch.object(SqlGenerationNode, "run", _sql_run()),
             patch.object(ExecuteQueryNode, "run", _execute_run()),

@@ -8,7 +8,7 @@ from app.models.dictionary import DataDictionary
 from app.models.state import ConversationState, IntentAnalysis
 from app.services.helpers.messages import to_langchain_history
 from app.services.helpers.prompt_helpers import load_prompt
-from app.services.llm import make_llm
+from app.services.llm import make_fast_llm
 from app.services.nodes.base import BaseNode
 
 logger = logging.getLogger(__name__)
@@ -57,8 +57,8 @@ class IntentNode(BaseNode):
         super().__init__("intentie")
 
     async def run(self, state: ConversationState, config: RunnableConfig) -> dict:
-        chain = self._PROMPT | make_llm(
-            state["model"], streaming=False
+        chain = self._PROMPT | make_fast_llm(
+            streaming=False
         ).with_structured_output(IntentAnalysis)
         result: IntentAnalysis = await chain.ainvoke(
             {

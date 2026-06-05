@@ -4,7 +4,7 @@ from langchain_core.runnables import RunnableConfig
 from app.models.dictionary import DataDictionary
 from app.models.state import ConversationState
 from app.services.helpers.prompt_helpers import format_results_section, load_prompt
-from app.services.llm import make_llm
+from app.services.llm import make_analysis_llm
 from app.services.nodes.base import BaseNode
 
 
@@ -73,7 +73,7 @@ class DescribeResultsNode(BaseNode):
         }
 
     async def run(self, state: ConversationState, config: RunnableConfig) -> dict:
-        chain = self._PROMPT | make_llm(state["model"], streaming=True)
+        chain = self._PROMPT | make_analysis_llm(streaming=True)
         response = await chain.ainvoke(self._build_context(state))
         return {"explanation": response.content}
 

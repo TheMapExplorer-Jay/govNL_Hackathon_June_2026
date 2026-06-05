@@ -7,7 +7,7 @@ from app.models.scenario import ScenarioAnalysis, ScenarioParams
 from app.models.state import ConversationState
 from app.services.helpers.messages import to_langchain_history
 from app.services.helpers.prompt_helpers import load_prompt
-from app.services.llm import make_llm
+from app.services.llm import make_fast_llm
 from app.services.nodes.base import BaseNode
 
 # Dutch + English what-if keywords — only call the LLM when at least one matches.
@@ -58,8 +58,8 @@ class ScenarioNode(BaseNode):
         if not _looks_like_scenario(state["messages"]):
             return {"scenario_params": None, "scenario_context": None}
 
-        chain = self._PROMPT | make_llm(
-            state["model"], streaming=False
+        chain = self._PROMPT | make_fast_llm(
+            streaming=False
         ).with_structured_output(ScenarioAnalysis)
 
         result: ScenarioAnalysis = await chain.ainvoke(
