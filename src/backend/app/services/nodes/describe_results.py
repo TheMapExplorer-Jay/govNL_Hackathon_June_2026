@@ -6,6 +6,7 @@ from app.models.state import ConversationState
 from app.services.helpers.prompt_helpers import format_results_section, load_prompt
 from app.services.llm import make_analysis_llm
 from app.services.nodes.base import BaseNode
+from app.services.policy_knowledge import get_policy_context
 
 
 def _columns_block(dictionary: DataDictionary, names: list[str]) -> str:
@@ -60,6 +61,7 @@ class DescribeResultsNode(BaseNode):
             "limit": state["intent_analysis"].intent.limit,
             "year_comparison": state["intent_analysis"].intent.year_comparison,
             "scenario_params": state.get("scenario_params"),
+            "policy_context": get_policy_context(),
             "col_metadata": _columns_block(
                 state["dictionary"],
                 list(sample[0].keys()) if sample else [],

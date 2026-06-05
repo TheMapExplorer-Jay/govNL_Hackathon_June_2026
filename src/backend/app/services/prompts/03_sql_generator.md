@@ -9,6 +9,11 @@ intent.** You may JOIN a second table on `h3_id` only if columns from two
 tables are explicitly required by the intent.
 
 ## Tables
+
+**Available table names (use these EXACTLY — no others exist):**
+{% for theme in themes %}{% for table in theme.tables %}- `{{ table.name }}`
+{% endfor %}{% endfor %}
+
 {% for theme in themes %}
 ### Thema: {{ theme.label }} ({{ theme.name }})
 {% for table in theme.tables %}
@@ -32,7 +37,8 @@ This is a **what-if scenario query**. Apply the scenario context above:
 ## User Intent
 
 Convert the structured intent below into a DuckDB SQL query.
-Only use columns and specifications that appear in this intent.
+The `description` field contains the full user question — use it as the primary guide.
+If `relevant_columns` lists only `h3_id`, infer the correct columns yourself from the description and the schema above.
 {{intent_section}}
 
 ## H3 spatial functions (DuckDB h3 extension)
@@ -89,6 +95,21 @@ table that contains the origin filter columns.
 
 **Note:** municipality names with an apostrophe must be escaped: `'''s-Gravenhage'`.
 
+### Coordinate-based buffer (LATLON origin)
+
+When `spatial_query.origin_filters` contains `column = "h3_coordinate"` and `value` starts with `LATLON:lat,lng`:
+- Extract the decimal lat and lng from the value string
+- Use `h3_latlng_to_cell(lat, lng, 9)` to get the origin H3 cell
+- No FROM clause needed — the buffer is a pure coordinate computation
+
+```sql
+AND LOWER(h3_id) IN (
+    SELECT LOWER(h3_h3_to_string(unnest(h3_grid_disk(h3_latlng_to_cell(LAT, LNG, 9), K))))
+)
+```
+
+Replace LAT and LNG with the actual decimal values from the LATLON string, and K with the k_rings integer.
+
 ## Aggregations
 
 NEVER use window functions or QUALIFY. Use a subquery with GROUP BY and JOIN
@@ -134,20 +155,24 @@ FROM <table>
 [WHERE <filters>]
 ```
 
-Some topics (notably CBS) have one table per year (e.g.
-`cbs_vierkantstatistieken_2022_consumption` vs. `..._2023_...`). For
-cross-year comparisons, JOIN the two year tables on `h3_id`.
+Some datasets have one table per year (e.g. `<topic>_2022` vs. `<topic>_2023`).
+For cross-year comparisons, JOIN the two year-specific tables on `h3_id`.
+Only use table names that appear in the "Available table names" list above.
 
 ## Rules
 
 1. Generate ONLY SELECT queries in DuckDB SQL dialect.
-2. Pick a table from the list above and reference it by its exact name. JOIN a
-   second table on `h3_id` only when truly necessary.
+2. **CRITICAL — table names**: Use ONLY names from the "Available table names" list at the
+   top of this prompt, copied character-for-character. NEVER abbreviate, reverse word order,
+   combine theme name with partial table name, use a column name as a table name, or invent
+   a name based on domain knowledge. If the exact concept is not in the list, pick the
+   closest available table. Any invented name causes a runtime error.
+   JOIN a second table on `h3_id` only when truly necessary.
 3. ALWAYS include `h3_id` in the SELECT for map visualization.
 4. NEVER add a `year` filter; years are encoded in column names or in the
    table name itself (CBS).
 5. Use double quotes for column names with special characters.
-6. Do NOT use LIMIT anywhere in the query.
+6. ALWAYS add `LIMIT 50000` at the end of the outer SELECT. Exception: aggregation subqueries (inner GROUP BY) must not have a LIMIT — only the outermost SELECT gets it.
 7. ALWAYS use single quotes for string values; escape an apostrophe by doubling it.
 
 ## Response format

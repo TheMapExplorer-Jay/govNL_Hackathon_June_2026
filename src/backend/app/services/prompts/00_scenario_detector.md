@@ -75,8 +75,40 @@ Be concrete. The SQL generator uses this directly.
 ### `stakeholder_impacts`
 Only stakeholders genuinely affected. Possible keys: `woningzoekenden`, `drinkwaterbedrijven`, `waterschappen`, `natuurorganisaties`, `gemeente`, `provincie`. One short Dutch sentence each.
 
+### `scenario_matrix`
+3-5 rows showing how impact differs across three intensity levels. Themes to choose from (pick the most relevant): `Drinkwateraanbod`, `Ruimtegebruik`, `Natuur & Bodem`, `Woningbouw`, `Economie & Industrie`, `Klimaat & Bodem`. Each row:
+- `theme`: theme name (Dutch, short)
+- `laag`: 1 short sentence — impact at low intensity/short duration
+- `midden`: 1 short sentence — impact at medium intensity (the assumed scenario)
+- `hoog`: 1 short sentence — impact at high intensity/worst case
+
+Example row for salinity_shock:
+```
+theme: "Drinkwateraanbod"
+laag: "Hollandse IJssel tijdelijk onbruikbaar; zes-uur-reserve volstaat."
+midden: "Meerdere innamepunten uitgeschakeld; distributie afhankelijk van reservoirs."
+hoog: "Regionale drinkwatertekorten; noodmaatregelen vereist in geheel Rijnland."
+```
+
+### `decision_points`
+2-3 concrete open beslispunten die voortvloeien uit dit scenario. Each:
+- `title`: short decision title (≤8 words)
+- `status`: always `"open"` for new scenarios
+- `description`: 1 sentence describing what needs to be decided and why it matters
+
+Example:
+```
+title: "Alternatieve inname activeren"
+status: "open"
+description: "Beslissen of Evides de Biesbosch-inname opschaalt als buffer bij Hollandse IJssel-uitval."
+```
+
 ### `thinking_summary`
 Dutch, max 6 sentences, first person: scenario type identified, parameters extracted, datasets chosen, what sql_context tells the SQL generator.
+
+## Beleidskader (gebruik als referentie bij het invullen van assumptions en limitations)
+
+{{ policy_context }}
 
 ## Rules
 
@@ -86,3 +118,4 @@ Dutch, max 6 sentences, first person: scenario type identified, parameters extra
 - Only set `salinity_duration_weeks`, `population_growth_pct`, `climate_scenario`, `intake_points_disabled` when the user explicitly specifies these values
 - `datasets_to_use` must contain table names from the list above; never hallucinate table names
 - `sql_context` must be specific enough for a SQL generator to know which tables to JOIN and on what condition
+- **Use the Beleidskader above** to ground `assumptions` and `limitations` in real policy thresholds (e.g., cite Rijnland onttrekkingslimiet, WL-scenario, drinkwaterprioriteit) — make them auditable and policy-backed

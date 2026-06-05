@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+import duckdb
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
@@ -19,14 +20,16 @@ class QueryRequest(BaseModel):
 async def run_query(body: QueryRequest):
     def _run():
         with connect_delta() as con:
-            try:
-                con.execute("LOAD h3;")
-            except Exception:
-                con.execute("INSTALL h3 FROM community; LOAD h3;")
             register_tables(con)
-            result = con.execute(body.sql).fetchall()
-            columns = [desc[0] for desc in con.description]
-            return [dict(zip(columns, row)) for row in result]
+            try:
+                result = con.execute(body.sql).fetchall()
+                columns = [desc[0] for desc in con.description]
+                return [dict(zip(columns, row)) for row in result]
+            except duckdb.CatalogException as exc:
+                # Table or view referenced in the SQL doesn't exist (e.g. the LLM
+                # hallucinated a name).  Return empty instead of crashing with 400.
+                logger.warning("Reference layer table not found: %s", exc)
+                return []
 
     try:
         rows = await asyncio.to_thread(_run)

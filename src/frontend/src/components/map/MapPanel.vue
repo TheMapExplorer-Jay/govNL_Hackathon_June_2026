@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useMap } from "../../composables/useMap";
+import HexCellPopup from "./HexCellPopup.vue";
 import LayerControl from "./LayerControl.vue";
 import MapContextPicker from "./MapContextPicker.vue";
+import MapLayerSummary from "./MapLayerSummary.vue";
 import MapLegend from "./MapLegend.vue";
+import PolicyPanel from "./PolicyPanel.vue";
 
 const {
 	legend,
@@ -14,6 +17,7 @@ const {
 	scaleMode,
 	map,
 	initMap,
+	cellPopup,
 } = useMap();
 
 function onToggleScale() {
@@ -30,10 +34,22 @@ function adjustPitch(delta: number) {
 }
 
 const mapContainer = ref<HTMLElement | null>(null);
+const containerWidth = ref(0);
+const containerHeight = ref(0);
 
 onMounted(() => {
 	if (mapContainer.value) {
 		initMap(mapContainer.value);
+		const ro = new ResizeObserver((entries) => {
+			const e = entries[0];
+			if (e) {
+				containerWidth.value = e.contentRect.width;
+				containerHeight.value = e.contentRect.height;
+			}
+		});
+		ro.observe(mapContainer.value);
+		containerWidth.value = mapContainer.value.clientWidth;
+		containerHeight.value = mapContainer.value.clientHeight;
 	}
 });
 </script>
@@ -50,6 +66,8 @@ onMounted(() => {
       </button>
     </div>
     <LayerControl />
+    <MapLayerSummary />
+    <PolicyPanel />
     <MapContextPicker />
     <MapLegend
       v-if="legend || heightLegend || iconLegend || categoryLegend"
@@ -60,8 +78,10 @@ onMounted(() => {
       :scale-mode="scaleMode"
       @toggle-scale="onToggleScale"
     />
+
+    <!-- Hover tooltip (ephemeral, follows cursor) -->
     <div
-      v-if="tooltip"
+      v-if="tooltip && !cellPopup"
       class="hex-tooltip"
       :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }"
     >
@@ -69,6 +89,15 @@ onMounted(() => {
         <span class="tooltip-key">{{ line.key }}:</span> {{ line.value }}
       </div>
     </div>
+
+    <!-- Click popup (persistent, dismissible) -->
+    <HexCellPopup
+      v-if="cellPopup"
+      :popup="cellPopup"
+      :container-width="containerWidth"
+      :container-height="containerHeight"
+      @close="cellPopup = null"
+    />
   </div>
 </template>
 
@@ -82,38 +111,6 @@ onMounted(() => {
 .map-container {
   width: 100%;
   height: 100%;
-}
-
-.opacity-control {
-  position: absolute;
-  bottom: 32px;
-  right: 12px;
-  background: white;
-  border-radius: 8px;
-  padding: 0.4rem 0.7rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.7rem;
-  color: #374151;
-}
-
-.opacity-label {
-  white-space: nowrap;
-  font-weight: 600;
-}
-
-.opacity-value {
-  min-width: 2.5rem;
-  text-align: right;
-  color: #6b7280;
-}
-
-input[type="range"] {
-  width: 80px;
-  accent-color: #3b82f6;
 }
 
 .pitch-controls {

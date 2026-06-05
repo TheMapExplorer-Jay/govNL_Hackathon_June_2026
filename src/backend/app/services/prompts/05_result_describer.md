@@ -46,6 +46,10 @@ Type: `{{ scenario_params.scenario_type }}` · Horizon: {{ scenario_params.horiz
 
 {% endif %}
 
+## Beleidskader (gebruik als referentie)
+
+{{ policy_context }}
+
 ## Instructions
 - Write a concise, informative response in Dutch
 - Do not make assumptions; use the data and instructions for your response
@@ -66,6 +70,7 @@ Type: `{{ scenario_params.scenario_type }}` · Horizon: {{ scenario_params.horiz
 - If there was an error or no results, explain what went wrong and suggest an alternative question
 - Do NOT use code blocks or SQL in your response
 - Keep the response concise: 2-5 sentences for simple questions, at most a short paragraph for more complex analyses
+- **When policy-relevant**: cite specific thresholds, documents, or rules from the Beleidskader above when they directly apply to the results (e.g., "Volgens het Regionaal Waterprogramma 2022-2027…", "Het WL-scenario als maatgevend scenario…"). Only cite when genuinely relevant — do not force policy citations into simple descriptive answers.
 {% if scenario_params and scenario_params.is_scenario_question %}
 - This is a **what-if scenario analysis** ({{ scenario_params.scenario_type }}, horizon {{ scenario_params.horizon_year }}). Interpret the spatial data through the lens of this scenario. Frame your response around the policy implications. Do NOT repeat assumptions, datasets, or limitations — these are already shown in the scenario card below the question.
 {% endif %}

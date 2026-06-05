@@ -107,11 +107,7 @@ def format_results_section(
                 top = ", ".join(
                     f'"{v}" ({c:,}×)' for v, c in stats["top_values"].items()
                 )
-                parts.append(
-                    f"- **{col_name}**: {stats['non_null_count']:,} non-null values, "
-                    f"{stats['distinct_count']:,} distinct values. "
-                    f"Most common: {top}"
-                )
+                parts.append(f"- **{col_name}**: Most common: {top}")
             else:
                 stat_parts = [f"  {k}: {v}" for k, v in stats.items()]
                 parts.append(f"- **{col_name}**\n" + "\n".join(stat_parts))

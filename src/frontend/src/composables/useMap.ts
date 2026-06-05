@@ -23,6 +23,16 @@ import { getH3Bounds } from "../utils/h3utils";
 
 const MAX_ELEVATION_METERS = 2000;
 
+// Fixed colors for the three-level scenario risk map
+const SCENARIO_LEVEL_COLORS: Record<string, [number, number, number, number]> = {
+  laag:   [34,  197, 94,  210],
+  low:    [34,  197, 94,  210],
+  midden: [245, 158, 11,  210],
+  mid:    [245, 158, 11,  210],
+  hoog:   [239, 68,  68,  210],
+  high:   [239, 68,  68,  210],
+};
+
 // Reference layers toggled on by the LayerControl panel (rendered below query results)
 const referenceLayerMap = new Map<string, H3HexagonLayer<{ h3_id: string }>>();
 // Current query-result layers (rebuilt on each updateHexagons call)
@@ -70,6 +80,23 @@ const tooltip = ref<{
 	y: number;
 	lines: { key: string; value: string }[];
 } | null>(null);
+
+// Active analysis result metadata shown in MapLayerSummary
+export interface ResultLayerInfo {
+	label: string;
+	count: number;
+}
+const activeResultLayer = ref<ResultLayerInfo | null>(null);
+
+// Cell click popup — persists until dismissed
+export interface CellPopup {
+	x: number;
+	y: number;
+	h3Id: string;
+	title: string;
+	lines: { key: string; value: string }[];
+}
+const cellPopup = ref<CellPopup | null>(null);
 
 let lastHexData: Record<string, unknown>[] | null = null;
 let lastMapPlan: MapPlan | null = null;
@@ -269,7 +296,11 @@ function numericRange(
 	data: Record<string, unknown>[],
 	col: string,
 ): { min: number; max: number; values: number[] } {
-	const values = data.map((r) => Number(r[col])).filter((v) => !isNaN(v));
+	// Treat null / undefined as missing data — exclude from range so they don't
+	// pull the scale toward 0 and distort the color mapping.
+	const values = data
+		.map((r) => (r[col] != null ? Number(r[col]) : NaN))
+		.filter((v) => !isNaN(v) && isFinite(v));
 	const min = values.length ? Math.min(...values) : 0;
 	const max = values.length ? Math.max(...values) : 0;
 	return { min, max, values };
@@ -292,41 +323,62 @@ function updateHexagons(data: Record<string, unknown>[], plan: MapPlan) {
 	const filtered = data.filter((r) => r[h3Col]);
 	if (filtered.length === 0) return;
 
+	// Include ALL rows that have an h3_id — rows whose color-column value is null
+	// are shown as "no data" gray instead of being silently dropped.
 	const hexData: HexagonData[] = data
-		.filter((r) => r[h3Col] && (valCol === null || r[valCol] != null))
+		.filter((r) => r[h3Col])
 		.map((r) => {
 			const properties: Record<string, unknown> = {};
 			for (const [key, val] of Object.entries(r)) {
 				if (key !== h3Col) properties[key] = val;
 			}
+			const rawVal = valCol != null ? r[valCol] : null;
 			return {
 				h3_id: String(r[h3Col]),
-				value: isCategorical ? 0 : Number(valCol ? r[valCol] : 0),
+				value: isCategorical ? 0 : (rawVal != null ? Number(rawVal) : NaN),
 				properties,
 			};
 		});
 	const categoryColorMap = new Map<string, [number, number, number, number]>();
 	if (color && isCategorical) {
-		const freq = new Map<string, number>();
-		for (const row of filtered) {
-			const cat = String(row[color.column] ?? "");
-			freq.set(cat, (freq.get(cat) ?? 0) + 1);
-			if (!categoryColorMap.has(cat)) {
-				categoryColorMap.set(
-					cat,
-					cat === "" ? [0, 0, 0, 0] : getCategoryColor(cat),
-				);
+		const isScenarioLevel = color.column === "scenario_level";
+
+		if (isScenarioLevel) {
+			// Fixed semantic colors — store lowercase keys so lookup is case-insensitive.
+			for (const [key, col] of Object.entries(SCENARIO_LEVEL_COLORS)) {
+				categoryColorMap.set(key.toLowerCase(), col);
 			}
+			categoryLegend.value = {
+				label: "Risiconiveau 2040",
+				items: [
+					{ label: "Laag risico",   color: SCENARIO_LEVEL_COLORS.laag! },
+					{ label: "Midden risico", color: SCENARIO_LEVEL_COLORS.midden! },
+					{ label: "Hoog risico",   color: SCENARIO_LEVEL_COLORS.hoog! },
+				],
+				truncated: false,
+			};
+		} else {
+			const freq = new Map<string, number>();
+			for (const row of filtered) {
+				const cat = String(row[color.column] ?? "");
+				freq.set(cat, (freq.get(cat) ?? 0) + 1);
+				if (!categoryColorMap.has(cat)) {
+					categoryColorMap.set(
+						cat,
+						cat === "" ? [0, 0, 0, 0] : getCategoryColor(cat),
+					);
+				}
+			}
+			const sorted = [...freq.entries()].sort((a, b) => b[1] - a[1]);
+			categoryLegend.value = {
+				label: color.label,
+				items: sorted.slice(0, 5).map(([cat]) => ({
+					label: cat === "" ? "(leeg)" : cat,
+					color: categoryColorMap.get(cat)!,
+				})),
+				truncated: sorted.length > 5,
+			};
 		}
-		const sorted = [...freq.entries()].sort((a, b) => b[1] - a[1]);
-		categoryLegend.value = {
-			label: color.label,
-			items: sorted.slice(0, 5).map(([cat]) => ({
-				label: cat === "" ? "(leeg)" : cat,
-				color: categoryColorMap.get(cat)!,
-			})),
-			truncated: sorted.length > 5,
-		};
 	} else {
 		categoryLegend.value = null;
 	}
@@ -340,7 +392,7 @@ function updateHexagons(data: Record<string, unknown>[], plan: MapPlan) {
 		const { min, max, values } = numericRange(filtered, color.column);
 		colorMin = min;
 		colorMax = max;
-		hasZeroValues = filtered.some((r) => Number(r[color.column]) === 0);
+		hasZeroValues = filtered.some((r) => r[color.column] != null && Number(r[color.column]) === 0);
 		const sorted = [...values].sort((a, b) => a - b);
 		const p2 = computePercentile(sorted, 2);
 		const p98 = computePercentile(sorted, 98);
@@ -377,17 +429,23 @@ function updateHexagons(data: Record<string, unknown>[], plan: MapPlan) {
 		);
 	}
 
+	const NO_DATA_COLOR: [number, number, number, number] = [200, 200, 200, 80];
+
 	const getFillColor = color
 		? isCategorical
 			? (d: HexagonData) => {
-					const cat = String(d.properties[color.column] ?? "");
+					const raw = String(d.properties[color.column] ?? "");
+					// Try exact match first, then lowercase (handles Laag/LAAG/laag etc.)
 					return (
-						categoryColorMap.get(cat) ??
-						([180, 180, 180, 180] as [number, number, number, number])
+						categoryColorMap.get(raw) ??
+						categoryColorMap.get(raw.toLowerCase()) ??
+						(raw === "" ? NO_DATA_COLOR : ([180, 180, 180, 180] as [number, number, number, number]))
 					);
 				}
-			: (d: HexagonData) =>
-					getColor(d.value, effectiveMin, effectiveMax, colorMin, colorMax)
+			: (d: HexagonData) => {
+					if (isNaN(d.value)) return NO_DATA_COLOR;
+					return getColor(d.value, effectiveMin, effectiveMax, colorMin, colorMax);
+				}
 		: () => [180, 180, 180, 180] as [number, number, number, number];
 
 	const getElevation = height
@@ -405,6 +463,21 @@ function updateHexagons(data: Record<string, unknown>[], plan: MapPlan) {
 			}
 		: 0;
 
+	// Label for the result layer summary and popup title
+	const resultLabel = color?.label ?? plan.height?.label ?? "Analyseresultaat";
+
+	function _buildPopupLines(obj: HexagonData): { key: string; value: string }[] {
+		return [
+			["h3_id", obj.h3_id] as [string, unknown],
+			...Object.entries(obj.properties),
+		]
+			.filter(([_, val]) => val != null && !(typeof val === "number" && isNaN(val)))
+			.map(([key, val]) => ({
+				key,
+				value: typeof val === "number" ? formatNumber(val) : String(val),
+			}));
+	}
+
 	const layer = new H3HexagonLayer({
 		id: "h3-hexagons",
 		data: hexData,
@@ -415,22 +488,24 @@ function updateHexagons(data: Record<string, unknown>[], plan: MapPlan) {
 		pickable: true,
 		onHover: (info: any) => {
 			if (info.object) {
-				const lines = [
-					["h3_id", info.object.h3_id] as [string, unknown],
-					...Object.entries(info.object.properties),
-				]
-					.filter(
-						([_, val]) =>
-							val != null && !(typeof val === "number" && isNaN(val)),
-					)
-					.map(([key, val]) => ({
-						key,
-						value: typeof val === "number" ? formatNumber(val) : String(val),
-					}));
+				const lines = _buildPopupLines(info.object);
 				tooltip.value = lines.length ? { x: info.x, y: info.y, lines } : null;
 			} else {
 				tooltip.value = null;
 			}
+		},
+		onClick: (info: any) => {
+			if (info.object) {
+				const lines = _buildPopupLines(info.object);
+				cellPopup.value = {
+					x: info.x,
+					y: info.y,
+					h3Id: info.object.h3_id,
+					title: resultLabel,
+					lines,
+				};
+			}
+			return true; // consume the event
 		},
 		opacity: hexOpacity.value,
 		filled: true,
@@ -438,6 +513,10 @@ function updateHexagons(data: Record<string, unknown>[], plan: MapPlan) {
 		getLineColor: [255, 255, 255, 80],
 		lineWidthMinPixels: 0.5,
 	});
+
+	activeResultLayer.value = hexData.length > 0
+		? { label: resultLabel, count: hexData.length }
+		: null;
 
 	// Build icon presence layers
 	const iconColumns = plan.icons ?? [];
@@ -555,6 +634,8 @@ function clearHexagons() {
 	heightLegend.value = null;
 	iconLegend.value = null;
 	categoryLegend.value = null;
+	activeResultLayer.value = null;
+	cellPopup.value = null;
 	lastHexData = null;
 	lastMapPlan = null;
 	if (map.value) {
@@ -583,5 +664,7 @@ export function useMap() {
 		clearLocationPin,
 		startLocationPicking,
 		stopLocationPicking,
+		activeResultLayer,
+		cellPopup,
 	};
 }

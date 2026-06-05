@@ -12,6 +12,7 @@ import { generateId } from "../utils/formatting";
 import { useDuckDB } from "./useDuckDB";
 import { extractTablesFromSql, useLayerPanel } from "./useLayerPanel";
 import { useMap } from "./useMap";
+import { usePolicyBuilder } from "./usePolicyBuilder";
 
 const messages = ref<ChatMessage[]>([]);
 const isStreaming = ref(false);
@@ -156,6 +157,23 @@ export function useChat() {
 							if (parsed.datasets_to_use?.length) {
 								activateLayers(parsed.datasets_to_use);
 							}
+							// Wire into policy builder — opens panel and loads scenario params
+							const { setScenarioContext, addInsight } = usePolicyBuilder();
+							setScenarioContext(parsed);
+							addInsight(userMsg.content);
+							break;
+						}
+						case "chart_data": {
+							const parsed = JSON.parse(data);
+							msg.charts = parsed.charts ?? null;
+							break;
+						}
+						case "clarification": {
+							const parsed = JSON.parse(data);
+							msg.clarificationOptions = {
+								question: parsed.question ?? "",
+								options: parsed.options ?? [],
+							};
 							break;
 						}
 						case "error": {

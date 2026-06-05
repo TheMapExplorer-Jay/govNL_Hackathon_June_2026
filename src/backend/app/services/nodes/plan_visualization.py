@@ -12,6 +12,50 @@ from app.services.llm import make_fast_llm
 from app.services.nodes.base import BaseNode
 
 
+def _plan_charts(summary: dict | None, sample: list[dict] | None) -> list[dict]:
+    """Deterministically derive chart descriptors from query summary stats.
+
+    Produces at most 4 items: bar charts (categorical) are preferred first,
+    then stat cards (numeric). The h3_id column is always skipped.
+    """
+    if not summary:
+        return []
+
+    bar_charts: list[dict] = []
+    stat_charts: list[dict] = []
+
+    for col, stats in summary.items():
+        if col == "h3_id":
+            continue
+        if "top_values" in stats:
+            bar_charts.append(
+                {
+                    "type": "bar",
+                    "column": col,
+                    "label": col,
+                    "data": [
+                        {"label": str(k), "value": v}
+                        for k, v in stats["top_values"].items()
+                    ],
+                }
+            )
+        elif "min" in stats and "max" in stats and "avg" in stats:
+            stat_charts.append(
+                {
+                    "type": "stat",
+                    "column": col,
+                    "label": col,
+                    "min": stats["min"],
+                    "max": stats["max"],
+                    "avg": stats["avg"],
+                }
+            )
+
+    # Prefer bar charts (more visual), fill remaining slots with stat cards
+    result = (bar_charts[:2] + stat_charts[:2])[:4]
+    return result
+
+
 class PlanVisualizationNode(BaseNode):
     """Assign H3 result columns to visual roles (color, height) for the map.
 
@@ -68,6 +112,11 @@ class PlanVisualizationNode(BaseNode):
 
         plan_data = plan.model_dump(exclude={"thinking_summary"})
         await self.dispatch("map_block", plan_data, config)
+
+        charts = _plan_charts(qr.summary, qr.sample)
+        if charts:
+            await self.dispatch("chart_data", {"charts": charts}, config)
+
         return {"map_plan": plan}
 
     def fallback(self) -> dict:

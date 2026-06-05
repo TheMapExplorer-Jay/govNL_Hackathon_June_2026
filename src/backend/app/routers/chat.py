@@ -35,10 +35,12 @@ CUSTOM_EVENT_TO_SSE = {
     "map_data": "map_data",
     "sql_block": "sql_block",
     "follow_up_text": "text",
+    "clarification": "clarification",
     "status": "status",
     "error": "error",
     "step_thinking_summary": "step_thinking_summary",
     "assumption_log": "assumption_log",
+    "chart_data": "chart_data",
 }
 
 MAX_TITLE_LENGTH = 100

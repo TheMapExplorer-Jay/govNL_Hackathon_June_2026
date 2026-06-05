@@ -1,0 +1,155 @@
+
+<style>
+  .zh-app { display: flex; height: 620px; font-family: var(--font-sans); background: var(--color-background-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; border: 0.5px solid var(--color-border-tertiary); }
+  .zh-sidebar { width: 220px; min-width: 220px; background: #1A3A5C; display: flex; flex-direction: column; padding: 0; }
+  .zh-sidebar-logo { padding: 20px 18px 16px; border-bottom: 0.5px solid rgba(255,255,255,0.1); }
+  .zh-sidebar-logo .appname { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9); letter-spacing: 0.02em; }
+  .zh-sidebar-logo .province { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+  .zh-sidebar-section { padding: 16px 12px 6px; font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.35); letter-spacing: 0.08em; text-transform: uppercase; }
+  .zh-nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 12px; margin: 1px 6px; border-radius: 6px; font-size: 12.5px; color: rgba(255,255,255,0.55); cursor: pointer; }
+  .zh-nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+  .zh-nav-item i { font-size: 15px; }
+  .zh-project-item { display: flex; align-items: center; gap: 9px; padding: 7px 12px; margin: 1px 6px; border-radius: 6px; font-size: 12px; color: rgba(255,255,255,0.6); cursor: pointer; }
+  .zh-project-item:hover { background: rgba(255,255,255,0.06); }
+  .zh-project-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .zh-sidebar-footer { margin-top: auto; padding: 14px 12px; border-top: 0.5px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 9px; }
+  .zh-avatar { width: 28px; height: 28px; border-radius: 50%; background: #2E7D5E; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: #fff; flex-shrink: 0; }
+  .zh-avatar-name { font-size: 12px; color: rgba(255,255,255,0.7); }
+
+  .zh-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .zh-topbar { background: var(--color-background-primary); border-bottom: 0.5px solid var(--color-border-tertiary); padding: 0 28px; height: 52px; display: flex; align-items: center; justify-content: space-between; }
+  .zh-topbar-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+  .zh-topbar-right { display: flex; align-items: center; gap: 10px; }
+  .zh-btn-primary { background: #1A5276; color: #fff; border: none; border-radius: 6px; padding: 7px 14px; font-size: 12.5px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .zh-btn-primary i { font-size: 14px; }
+
+  .zh-content { flex: 1; overflow-y: auto; padding: 28px; }
+  .zh-welcome { margin-bottom: 28px; }
+  .zh-welcome h1 { font-size: 20px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 5px; }
+  .zh-welcome p { font-size: 13.5px; color: var(--color-text-secondary); margin: 0; line-height: 1.6; }
+
+  .zh-new-project-card { background: var(--color-background-primary); border: 1.5px dashed var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: 32px; text-align: center; margin-bottom: 28px; cursor: pointer; }
+  .zh-new-project-card:hover { border-color: #1A5276; }
+  .zh-new-project-icon { width: 44px; height: 44px; border-radius: 10px; background: #EAF2FB; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+  .zh-new-project-icon i { font-size: 22px; color: #1A5276; }
+  .zh-new-project-card h3 { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 5px; }
+  .zh-new-project-card p { font-size: 12.5px; color: var(--color-text-secondary); margin: 0; }
+
+  .zh-section-label { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+  .zh-projects-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .zh-project-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 16px; cursor: pointer; }
+  .zh-project-card:hover { border-color: var(--color-border-secondary); }
+  .zh-project-card-tag { display: inline-flex; align-items: center; font-size: 10.5px; padding: 3px 8px; border-radius: 4px; font-weight: 500; margin-bottom: 10px; }
+  .tag-energy { background: #FEF3E2; color: #7D4A0A; }
+  .tag-water { background: #E1F0FA; color: #0C447C; }
+  .tag-ruimte { background: #E4F2E8; color: #27500A; }
+  .zh-project-card h4 { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 5px; line-height: 1.4; }
+  .zh-project-card p { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 12px; line-height: 1.5; }
+  .zh-project-meta { display: flex; align-items: center; justify-content: space-between; }
+  .zh-project-date { font-size: 11px; color: var(--color-text-secondary); }
+  .zh-project-status { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+  .zh-status-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .status-active { background: #2E7D5E; }
+  .status-draft { background: #888780; }
+  .status-review { background: #D4A017; }
+</style>
+
+<div class="zh-app">
+  <div class="zh-sidebar">
+    <div class="zh-sidebar-logo">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div style="width:28px;height:28px;background:#2E7D5E;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+          <i class="ti ti-map-2" style="font-size:15px;color:#fff;" aria-hidden="true"></i>
+        </div>
+        <div>
+          <div class="appname">ScenarioLab</div>
+          <div class="province">Provincie Zuid-Holland</div>
+        </div>
+      </div>
+    </div>
+    <div class="zh-sidebar-section">Navigatie</div>
+    <div class="zh-nav-item active"><i class="ti ti-home" aria-hidden="true"></i> Overzicht</div>
+    <div class="zh-nav-item"><i class="ti ti-chart-bar" aria-hidden="true"></i> Dashboard</div>
+    <div class="zh-nav-item"><i class="ti ti-settings" aria-hidden="true"></i> Instellingen</div>
+
+    <div class="zh-sidebar-section" style="margin-top:8px;">Projecten</div>
+    <div class="zh-project-item">
+      <div class="zh-project-dot" style="background:#EF9F27;"></div>
+      <span>Datacenters Westland</span>
+    </div>
+    <div class="zh-project-item">
+      <div class="zh-project-dot" style="background:#1D9E75;"></div>
+      <span>Woningbouw Leiden-Noord</span>
+    </div>
+    <div class="zh-project-item">
+      <div class="zh-project-dot" style="background:#378ADD;"></div>
+      <span>Waterkeringen 2035</span>
+    </div>
+    <div class="zh-project-item">
+      <div class="zh-project-dot" style="background:#888780;"></div>
+      <span>Energie-transitie Duin</span>
+    </div>
+    <div class="zh-nav-item" style="margin-top:4px;"><i class="ti ti-plus" aria-hidden="true"></i> Nieuw project</div>
+
+    <div class="zh-sidebar-footer">
+      <div class="zh-avatar">MV</div>
+      <div>
+        <div class="zh-avatar-name">M. van der Berg</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.35);">Beleidsadviseur</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="zh-main">
+    <div class="zh-topbar">
+      <div class="zh-topbar-title">Welkom terug</div>
+      <div class="zh-topbar-right">
+        <div style="font-size:12px;color:var(--color-text-secondary);">4 actieve projecten</div>
+        <button class="zh-btn-primary"><i class="ti ti-plus" aria-hidden="true"></i> Nieuw project</button>
+      </div>
+    </div>
+    <div class="zh-content">
+      <div class="zh-welcome">
+        <h1>Scenario planning voor beleid</h1>
+        <p>Start een nieuw project of ga verder met een bestaand project om scenario's te verkennen en beslissingen te onderbouwen.</p>
+      </div>
+
+      <div class="zh-new-project-card">
+        <div class="zh-new-project-icon"><i class="ti ti-sparkles" aria-hidden="true"></i></div>
+        <h3>Start een nieuw project</h3>
+        <p>Beschrijf een beleidsvraagstuk en laat de AI je helpen scenario's, variabelen en beslispunten in kaart te brengen.</p>
+      </div>
+
+      <div class="zh-section-label">Recente projecten</div>
+      <div class="zh-projects-grid">
+        <div class="zh-project-card">
+          <div class="zh-project-card-tag tag-energy">Energie & Ruimte</div>
+          <h4>Datacenters Westland</h4>
+          <p>Scenario's rondom omvang, energie- en watergebruik van datacenters in de regio Westland.</p>
+          <div class="zh-project-meta">
+            <div class="zh-project-date">Bijgewerkt 2 jun 2026</div>
+            <div class="zh-project-status"><div class="zh-status-dot status-active"></div><span style="color:#085041;font-size:11px;">Actief</span></div>
+          </div>
+        </div>
+        <div class="zh-project-card">
+          <div class="zh-project-card-tag tag-ruimte">Woningbouw</div>
+          <h4>Woningbouw Leiden-Noord</h4>
+          <p>Impact van woningbouwscenario's op leefomgeving, mobiliteit en voorzieningenniveau.</p>
+          <div class="zh-project-meta">
+            <div class="zh-project-date">Bijgewerkt 28 mei 2026</div>
+            <div class="zh-project-status"><div class="zh-status-dot status-review"></div><span style="color:#854F0B;font-size:11px;">In review</span></div>
+          </div>
+        </div>
+        <div class="zh-project-card">
+          <div class="zh-project-card-tag tag-water">Waterbeheer</div>
+          <h4>Waterkeringen 2035</h4>
+          <p>Klimaatscenario's en effecten op waterveiligheid langs de kust van Zuid-Holland.</p>
+          <div class="zh-project-meta">
+            <div class="zh-project-date">Bijgewerkt 14 mei 2026</div>
+            <div class="zh-project-status"><div class="zh-status-dot status-draft"></div><span style="color:#5F5E5A;font-size:11px;">Concept</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

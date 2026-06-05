@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     ENV: str = "dev"
     APP_VERSION: str = "dev"
 
+    # Skip DuckDB column-stats queries at startup and build the dictionary purely
+    # from the JSON metadata files.  Startup goes from ~30s to <1s.
+    # Trade-off: min/max/mean/sample_values are absent from the LLM context —
+    # acceptable for demos; disable for production accuracy.
+    FAST_STARTUP: bool = True
+
     # Filter value validation — fuzzy-matching thresholds
     FILTER_MAX_FUZZY_CANDIDATES: int = (
         20  # Cap candidates shown to the correction LLM to keep the prompt concise.

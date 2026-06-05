@@ -1,14 +1,39 @@
 import asyncio
 import logging
+import re
 
 from langchain_core.runnables import RunnableConfig
 
 from app.models.state import ConversationState, QueryResult
-from app.services.helpers.db import connect_delta
+from app.services.helpers.db import QUERY_TIMEOUT_MS, connect_delta
 from app.services.helpers.tables import register_tables
 from app.services.nodes.base import BaseNode
 
 logger = logging.getLogger(__name__)
+
+# asyncio-level safety net: kill the thread if DuckDB itself ignores its timeout.
+ASYNC_TIMEOUT_S = (QUERY_TIMEOUT_MS / 1000) + 10
+
+# Maximum rows streamed to the frontend map renderer.
+MAP_ROW_LIMIT = 50_000
+
+# Skip per-column summary queries when the result has many columns (wide joins
+# produce dozens of columns; computing stats for each adds seconds of latency).
+SUMMARY_MAX_COLUMNS = 12
+
+
+def _ensure_limit(sql: str, limit: int) -> str:
+    """Append LIMIT to the outermost SELECT if none is already present.
+
+    Protects against full-table scans when the LLM omits the LIMIT clause.
+    Strips a trailing semicolon before wrapping.
+    """
+    clean = sql.rstrip().rstrip(";").rstrip()
+    # Reliable check: does the query end with LIMIT <digits>? Handles both
+    # "LIMIT 50000" and "LIMIT\n50000" that the old rsplit heuristic missed.
+    if re.search(r"\bLIMIT\s+\d+\s*$", clean, re.IGNORECASE):
+        return clean
+    return f"{clean} LIMIT {limit}"
 
 
 class ExecuteQueryNode(BaseNode):
@@ -40,13 +65,35 @@ class ExecuteQueryNode(BaseNode):
         if not sql_query:
             return {"query_result": QueryResult(error="Geen SQL query gegenereerd")}
 
+        # Show progress immediately — DuckDB can take 5-30s; without this the
+        # user sees the step spinner freeze with no feedback.
+        await self.dispatch(
+            "step_thinking_summary",
+            {"step_id": "execute", "summary": "Bezig met uitvoeren van de database-query…"},
+            config,
+        )
+
         try:
-            sample, count, summary, all_rows = await asyncio.to_thread(
-                self._execute_query, sql_query, state
+            sample, count, summary, all_rows = await asyncio.wait_for(
+                asyncio.to_thread(self._execute_query, sql_query, state),
+                timeout=ASYNC_TIMEOUT_S,
             )
+        except asyncio.TimeoutError:
+            logger.warning("Query timed out after %.0fs: %.120s", ASYNC_TIMEOUT_S, sql_query)
+            return {
+                "query_result": QueryResult(
+                    error=f"Query time-out na {int(ASYNC_TIMEOUT_S)}s. Probeer een specifiekere vraag of voeg filters toe."
+                )
+            }
         except Exception as exc:
             logger.exception("Query execution failed")
             return {"query_result": QueryResult(error=str(exc))}
+
+        await self.dispatch(
+            "step_thinking_summary",
+            {"step_id": "execute", "summary": f"{count:,} rijen gevonden."},
+            config,
+        )
 
         if all_rows:
             await self.dispatch("map_data", {"rows": all_rows}, config)
@@ -75,15 +122,17 @@ class ExecuteQueryNode(BaseNode):
             if (intent and intent.aggregation and intent.aggregation.level)
             else None
         )
-        sql_query = sql_query.rstrip().rstrip(";")
-
         with connect_delta() as con:
-            # 1. Register all per-theme tables as views (uses cached table list)
+            # 1. Register all per-theme tables as views (uses cached SQL statements)
             register_tables(con)
 
-            # 2. Materialize: Create a temporary table with the user's query results
-            # This allows us to run multiple queries (count, sample, stats) on the same result set
-            con.execute(f"CREATE TEMP TABLE _results AS {sql_query}")
+            # 2. Ensure the query has a top-level LIMIT so unbounded full-table
+            #    scans are caught even when the LLM forgets the rule.
+            guarded_sql = _ensure_limit(sql_query, MAP_ROW_LIMIT)
+
+            # 3. Materialize into a temp table so subsequent count/sample/stats
+            #    queries all run against an already-scanned result set.
+            con.execute(f"CREATE TEMP TABLE _results AS {guarded_sql}")
 
             result_cols = [
                 row[0]
@@ -92,7 +141,7 @@ class ExecuteQueryNode(BaseNode):
                 ).fetchall()
             ]
 
-            # 3. Count: Get the total number of rows
+            # 4. Count: Get the total number of rows
             total_count: int = con.execute("SELECT COUNT(*) FROM _results").fetchone()[
                 0
             ]
@@ -100,8 +149,14 @@ class ExecuteQueryNode(BaseNode):
             if total_count == 0:
                 return [], 0, None, []
 
-            # 4. Fetch all rows for map rendering
-            all_rows = self._rows_to_dicts(con.execute("SELECT * FROM _results"))
+            # 4. Fetch rows for map rendering — capped to avoid streaming huge payloads
+            all_rows = self._rows_to_dicts(
+                con.execute(f"SELECT * FROM _results LIMIT {MAP_ROW_LIMIT}")
+            )
+            if total_count > MAP_ROW_LIMIT:
+                logger.info(
+                    "Map data capped at %d rows (total: %d)", MAP_ROW_LIMIT, total_count
+                )
 
             # 5. Sample: Get a subset for the AI description.
             # For aggregation queries, use a distinct ranking (top-N areas) so the LLM
@@ -133,46 +188,50 @@ class ExecuteQueryNode(BaseNode):
     def _build_summary(self, con) -> dict | None:
         """Calculate summary statistics for numeric and categorical columns of _results.
 
-        Helps the LLM understand the data distribution without seeing all rows.
+        Numeric stats are gathered in a single batched query (one round trip
+        for all columns) instead of one query per column.  Categorical columns
+        use one GROUP BY each but skip the two pre-check COUNT queries.
         """
         cols = con.execute(
             "SELECT column_name, data_type FROM information_schema.columns "
             "WHERE table_name = '_results'"
         ).fetchall()
 
-        summary: dict[str, dict] = {}
-        for col_name, col_type in cols:
-            if col_type in self.NUMERIC_TYPES:
-                stats = con.execute(
-                    f'SELECT MIN("{col_name}"), MAX("{col_name}"), '
-                    f'ROUND(AVG("{col_name}"), 2) FROM _results'
-                ).fetchone()
-                if stats and stats[0] is not None:
-                    summary[col_name] = {
-                        "min": stats[0],
-                        "max": stats[1],
-                        "avg": stats[2],
-                    }
+        # Skip expensive per-column queries for very wide result sets.
+        if len(cols) > SUMMARY_MAX_COLUMNS:
+            return None
 
-            elif col_type in self.CATEGORICAL_TYPES and col_name != "h3_id":
-                non_null_count = con.execute(
-                    f'SELECT COUNT(*) FROM _results WHERE "{col_name}" IS NOT NULL'
-                ).fetchone()[0]
-                if non_null_count == 0:
-                    continue
-                distinct_count = con.execute(
-                    f'SELECT COUNT(DISTINCT "{col_name}") FROM _results '
-                    f'WHERE "{col_name}" IS NOT NULL'
-                ).fetchone()[0]
-                top_rows = con.execute(
-                    f'SELECT "{col_name}", COUNT(*) AS cnt FROM _results '
-                    f'WHERE "{col_name}" IS NOT NULL '
-                    f'GROUP BY "{col_name}" ORDER BY cnt DESC '
-                    f"LIMIT {self.CATEGORICAL_TOP_N}"
-                ).fetchall()
+        numeric_cols = [c for c, t in cols if t in self.NUMERIC_TYPES]
+        categorical_cols = [
+            c for c, t in cols
+            if t in self.CATEGORICAL_TYPES and c != "h3_id"
+        ]
+
+        summary: dict[str, dict] = {}
+
+        # ── One batched query for all numeric columns ──────────────────────
+        if numeric_cols:
+            agg_exprs = ", ".join(
+                f'MIN("{c}"), MAX("{c}"), ROUND(AVG("{c}"), 2)'
+                for c in numeric_cols
+            )
+            row = con.execute(f"SELECT {agg_exprs} FROM _results").fetchone()
+            if row:
+                for i, col_name in enumerate(numeric_cols):
+                    mn, mx, av = row[i * 3], row[i * 3 + 1], row[i * 3 + 2]
+                    if mn is not None:
+                        summary[col_name] = {"min": mn, "max": mx, "avg": av}
+
+        # ── One GROUP BY per categorical column (no COUNT pre-checks) ──────
+        for col_name in categorical_cols:
+            top_rows = con.execute(
+                f'SELECT "{col_name}", COUNT(*) AS cnt FROM _results '
+                f'WHERE "{col_name}" IS NOT NULL '
+                f'GROUP BY "{col_name}" ORDER BY cnt DESC '
+                f"LIMIT {self.CATEGORICAL_TOP_N}"
+            ).fetchall()
+            if top_rows:
                 summary[col_name] = {
-                    "non_null_count": non_null_count,
-                    "distinct_count": distinct_count,
                     "top_values": {str(v): c for v, c in top_rows},
                 }
 

@@ -81,8 +81,10 @@ has its own column set; the spatial key `h3_id` is present on every table.
 
 
 5. CONFIDENCE SCORING (0.0–1.0):
-   - ≥0.9: all parameters explicit → is_clear: true
-   - <0.9: ambiguity present → is_clear: false, ask follow-up
+   - ≥0.7: enough to make a reasonable query → is_clear: true (best-effort)
+   - <0.7: genuine blocking ambiguity → is_clear: false, ask one short follow-up
+   - If `scenario_context` is present (see below): always is_clear: true regardless of score
+   - If the conversation history shows the user directly answering a prior follow-up question (short reply, column name, value, or choice): always is_clear: true — apply that answer and proceed
 
 
 ## Output format
@@ -170,6 +172,9 @@ Gebruik deze toelichting om:
 - Take into account the conversation history, the user's previous questions and answers, and the context of the current question
 - For distance/proximity queries: the location and distance are always clear — only ask for clarification if the *topic* (which data column to show) is missing or ambiguous
 - For proximity queries: always use `spatial_query` with `origin_filters` and `k_rings` — do NOT put origin area filters in the main `filters` list
+- **NEVER ask the same follow-up question twice.** If a clarification you asked previously was already answered (even partially) in the conversation history, treat it as resolved and proceed with `is_clear: true`.
+- **Prefer proceeding over asking.** If you can make a reasonable best-effort interpretation, do so and set `is_clear: true`. Only ask when the ambiguity would produce completely wrong results.
+- When `is_clear: false`, the `follow_up_question` must list concrete options with `-` bullet points so the user can click them directly. Keep it to one short question with ≤4 options.
 
 ## Thinking summary
 

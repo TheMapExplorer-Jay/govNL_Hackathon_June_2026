@@ -8,8 +8,22 @@ export const THINKING_STEP_LABELS: Record<string, string> = {
 	intentie: "Begrijpen wat de intentie van je vraag is",
 	validatie: "Controleren of de filterwaarden kloppen",
 	sql: "Vertalen van de vraag naar een database-query",
+	execute: "Uitvoeren van de database-query",
 	kaart: "Bepalen hoe de resultaten gevisualiseerd worden",
 };
+
+export interface ScenarioMatrixRow {
+	theme: string;
+	laag: string;
+	midden: string;
+	hoog: string;
+}
+
+export interface DecisionPoint {
+	title: string;
+	status: "open" | "vastgesteld" | "geblokkeerd";
+	description: string;
+}
 
 export interface AssumptionLog {
 	is_scenario_question: boolean;
@@ -24,12 +38,36 @@ export interface AssumptionLog {
 	assumptions: string[];
 	limitations: string[];
 	stakeholder_impacts: Record<string, string>;
+	scenario_matrix: ScenarioMatrixRow[];
+	decision_points: DecisionPoint[];
+}
+
+export interface ChartBarItem {
+	label: string;
+	value: number;
+}
+
+export interface ChartItem {
+	type: "bar" | "stat";
+	column: string;
+	label: string;
+	// bar
+	data?: ChartBarItem[];
+	// stat
+	min?: number;
+	max?: number;
+	avg?: number;
 }
 
 export interface MessageFeedback {
 	rating: "up" | "down";
 	comment?: string | null;
 	updatedAt: string;
+}
+
+export interface ClarificationOptions {
+	question: string;
+	options: string[];
 }
 
 export interface ChatMessage {
@@ -43,6 +81,8 @@ export interface ChatMessage {
 	thinkingSummaries?: ThinkingSummary[];
 	feedback?: MessageFeedback | null;
 	assumptionLog?: AssumptionLog | null;
+	clarificationOptions?: ClarificationOptions | null;
+	charts?: ChartItem[] | null;
 }
 
 export interface ColorRole {
@@ -83,6 +123,8 @@ export type SSEEventType =
 	| "status"
 	| "step_thinking_summary"
 	| "assumption_log"
+	| "clarification"
+	| "chart_data"
 	| "done";
 
 export interface SSEEvent {

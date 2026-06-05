@@ -137,36 +137,61 @@ def load_theme_metadata(root: Path = DATA_DIR) -> dict[str, dict]:
     return out
 
 
-def register_tables(
-    con: duckdb.DuckDBPyConnection, entries: list[TableEntry] | None = None
-) -> list[TableEntry]:
-    """Register a view per table on `con`. CBS views alias `h3_index` to `h3_id`.
+# Cached list of CREATE VIEW statements built once from the table list.
+_view_sql_cache: list[str] | None = None
 
-    Idempotent for a given connection: uses `CREATE OR REPLACE VIEW`.
-    Returns the list of entries that were registered.
-    """
-    if entries is None:
-        entries = discover_tables()
+# Track which connection objects already have views registered so we never
+# re-execute 60+ CREATE VIEW statements on a reused persistent connection.
+_registered_con_ids: set[int] = set()
+
+
+def _build_view_statements(entries: list[TableEntry]) -> list[str]:
+    """Return one CREATE OR REPLACE VIEW SQL string per entry."""
+    stmts: list[str] = []
     for entry in entries:
-        # h3_id is lowercased so CBS (already lowercase) and woondeals
-        # (uppercase in the raw parquet) can join across tables.
         if entry.is_cbs:
-            sql = (
+            stmts.append(
                 f"CREATE OR REPLACE VIEW {entry.table_name} AS "
                 f"SELECT * EXCLUDE ({CBS_ID_RAW}), LOWER({CBS_ID_RAW}) AS {CANONICAL_ID} "
                 f"FROM read_parquet('{entry.parquet_glob}')"
             )
         else:
-            sql = (
+            stmts.append(
                 f"CREATE OR REPLACE VIEW {entry.table_name} AS "
                 f"SELECT * EXCLUDE ({CANONICAL_ID}), LOWER({CANONICAL_ID}) AS {CANONICAL_ID} "
                 f"FROM read_parquet('{entry.parquet_glob}')"
             )
+    return stmts
+
+
+def register_tables(
+    con: duckdb.DuckDBPyConnection, entries: list[TableEntry] | None = None
+) -> list[TableEntry]:
+    """Register a view per table on `con`. CBS views alias `h3_index` to `h3_id`.
+
+    View SQL statements are cached after the first call so subsequent
+    registrations skip string-building overhead.  When `con` is a persistent
+    thread-local connection the function is a no-op after the first call —
+    views are already registered and re-executing 60+ CREATE VIEW statements
+    on every query would waste ~1-2s per turn.
+    Returns the list of entries that were registered.
+    """
+    global _view_sql_cache, _registered_con_ids
+
+    if entries is None:
+        entries = discover_tables()
+
+    con_id = id(con)
+    if con_id in _registered_con_ids:
+        return entries
+
+    if _view_sql_cache is None or len(_view_sql_cache) != len(entries):
+        _view_sql_cache = _build_view_statements(entries)
+
+    for entry, sql in zip(entries, _view_sql_cache):
         try:
             con.execute(sql)
         except Exception:
-            # Some extra tables may have neither h3_id nor h3_index — register
-            # them as-is so at least the table is visible.
             logger.warning(
                 "Could not register view %s with h3_id aliasing; "
                 "retrying without column rename",
@@ -179,4 +204,15 @@ def register_tables(
                 )
             except Exception:
                 logger.exception("Failed to register view %s", entry.table_name)
+    _registered_con_ids.add(con_id)
     return entries
+
+
+def deregister_connection(con_id: int) -> None:
+    """Remove a connection from the registered-views tracking set.
+
+    Call this when a persistent connection is discarded so that if Python
+    reuses the same memory address for a new connection, views will be
+    re-registered correctly.
+    """
+    _registered_con_ids.discard(con_id)

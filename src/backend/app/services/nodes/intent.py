@@ -1,71 +1,65 @@
-import logging
-from difflib import get_close_matches
+import re
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableConfig
 
-from app.models.dictionary import DataDictionary
-from app.models.state import ConversationState, IntentAnalysis
-from app.services.helpers.messages import to_langchain_history
-from app.services.helpers.prompt_helpers import load_prompt
-from app.services.llm import make_fast_llm
+from app.models.state import ConversationState, Filter, Intent, IntentAnalysis, SpatialQuery
 from app.services.nodes.base import BaseNode
 
-logger = logging.getLogger(__name__)
-
-
-def _get_valid_column_names(dictionary: DataDictionary) -> set[str]:
-    return {col.name for col in dictionary.all_columns()}
-
-
-def _column_to_tables(dictionary: DataDictionary) -> dict[str, list[str]]:
-    """Map column name → list of tables that contain that column."""
-    out: dict[str, list[str]] = {}
-    for table in dictionary.all_tables():
-        for col in table.columns:
-            out.setdefault(col.name, []).append(table.name)
-    return out
-
-
-def _correct_column_names(columns: list[str], valid_names: set[str]) -> list[str]:
-    corrected = []
-    for col in columns:
-        if col in valid_names:
-            corrected.append(col)
-            continue
-        matches = get_close_matches(col, valid_names, n=1, cutoff=0.6)
-        if matches:
-            logger.info("Corrected column name: %s -> %s", col, matches[0])
-            corrected.append(matches[0])
-        else:
-            logger.warning("No match found for column: %s (dropped)", col)
-    return corrected
+_LATLON_RE = re.compile(r"LATLON:(-?\d+\.\d+),(-?\d+\.\d+).*?(\d+)\s+H3-ringen")
 
 
 class IntentNode(BaseNode):
-    """Analyse the user's intent and determine if it is clear enough for SQL generation."""
+    """Pass-through: always proceeds to SQL generation without asking the user questions.
 
-    _PROMPT = ChatPromptTemplate.from_messages(
-        [
-            ("system", load_prompt("01_intent_analyzer.md")),
-            MessagesPlaceholder("history"),
-        ],
-        template_format="jinja2",
-    )
+    The SQL generator has the full schema and scenario context — it handles
+    column selection and filtering directly. Removing the LLM disambiguation
+    step keeps the flow fast and avoids overwhelming policymakers with questions.
+
+    When the user message contains a LATLON spatial context prefix (injected by
+    ChatInput.vue), the prefix is parsed and stored as a structured SpatialQuery
+    on the intent so the SQL generator can emit an H3 buffer subquery.
+    """
 
     def __init__(self):
         super().__init__("intentie")
 
     async def run(self, state: ConversationState, config: RunnableConfig) -> dict:
-        chain = self._PROMPT | make_fast_llm(
-            streaming=False
-        ).with_structured_output(IntentAnalysis)
-        result: IntentAnalysis = await chain.ainvoke(
-            {
-                "themes": state["dictionary"].themes,
-                "history": to_langchain_history(state["messages"]),
-                "scenario_context": state.get("scenario_context") or "",
-            },
+        # Extract the last user message as the query description.
+        last_user = next(
+            (m["content"] for m in reversed(state["messages"]) if m["role"] == "user"),
+            "",
+        )
+
+        # Parse optional LATLON spatial context prefix injected by ChatInput.vue.
+        spatial_query: SpatialQuery | None = None
+        thinking_suffix = ""
+        match = _LATLON_RE.search(last_user)
+        if match:
+            lat = match.group(1)
+            lng = match.group(2)
+            k_rings = int(match.group(3))
+            spatial_query = SpatialQuery(
+                origin_filters=[
+                    Filter(
+                        column="h3_coordinate",
+                        operator="=",
+                        value=f"LATLON:{lat},{lng}",
+                    )
+                ],
+                k_rings=k_rings,
+            )
+            thinking_suffix = f" Ruimtelijk filter gedetecteerd: LATLON:{lat},{lng} met {k_rings} H3-ringen."
+
+        intent = Intent(
+            description=last_user,
+            relevant_columns=["h3_id"],
+            filters=[],
+            spatial_query=spatial_query,
+        )
+        result = IntentAnalysis(
+            is_clear=True,
+            intent=intent,
+            thinking_summary=f"Doorgegeven aan SQL-generator zonder tussenvragen.{thinking_suffix}",
         )
 
         await self.dispatch(
@@ -74,47 +68,11 @@ class IntentNode(BaseNode):
             config,
         )
 
-        # Correct hallucinated column names against the actual dictionary, and
-        # fill in `table` on any filter where the LLM left it blank.
-        if result.is_clear and result.intent:
-            dictionary = state["dictionary"]
-            valid_names = _get_valid_column_names(dictionary)
-            col_to_tables = _column_to_tables(dictionary)
-            result.intent.relevant_columns = _correct_column_names(
-                result.intent.relevant_columns, valid_names
-            )
-            for f in result.intent.filters:
-                if f.column == "h3_spatial_filter":
-                    continue
-                corrected = _correct_column_names([f.column], valid_names)
-                if corrected:
-                    f.column = corrected[0]
-                if not f.table:
-                    tables = col_to_tables.get(f.column, [])
-                    if tables:
-                        f.table = tables[0]
-
-        if not result.is_clear:
-            await self.dispatch(
-                "follow_up_text", {"content": result.follow_up_question}, config
-            )
-
         return {
             "intent_analysis": result,
-            "needs_spatial_resolution": self._needs_spatial_resolution(result),
+            "needs_spatial_resolution": False,
             "pdok_used": False,
         }
-
-    @staticmethod
-    def _needs_spatial_resolution(result: IntentAnalysis) -> bool:
-        intent = result.intent if result.is_clear else None
-        if not intent or not intent.spatial_query:
-            return False
-        return any(
-            origin_filter.column == "h3_spatial_filter"
-            and not origin_filter.value.startswith("LATLON:")
-            for origin_filter in intent.spatial_query.origin_filters
-        )
 
     def fallback(self) -> dict:
         return {

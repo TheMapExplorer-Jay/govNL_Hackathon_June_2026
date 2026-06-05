@@ -1,6 +1,7 @@
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { api } from "../services/api";
 import { useMap } from "./useMap";
+import { useMapContext } from "./useMapContext";
 
 const LAYER_PALETTE: [number, number, number][] = [
 	[239, 68, 68],   // red
@@ -22,6 +23,8 @@ export interface LayerState {
 
 const layerStates = ref<Record<string, LayerState>>({});
 let colorIndex = 0;
+
+const { activeContext } = useMapContext();
 
 function ensureState(tableId: string): LayerState {
 	if (!layerStates.value[tableId]) {
@@ -45,6 +48,36 @@ export function extractTablesFromSql(sql: string): string[] {
 	return [...new Set(names)];
 }
 
+/**
+ * Build the SQL to fetch H3 IDs for a reference layer.
+ * When a spatial context is active the result is clipped to the buffer so
+ * the reference layer matches the area shown in the analysis.
+ */
+function _buildLayerSql(tableId: string): string {
+	const ctx = activeContext.value;
+	if (ctx) {
+		const kRings = Math.ceil(ctx.radiusKm / 0.35);
+		return (
+			`SELECT DISTINCT h3_id FROM "${tableId}" ` +
+			`WHERE h3_id IN (` +
+			`SELECT LOWER(h3_h3_to_string(unnest(h3_grid_disk(` +
+			`h3_latlng_to_cell(${ctx.lat}, ${ctx.lng}, 9), ${kRings})))) ` +
+			`) LIMIT 100000`
+		);
+	}
+	return `SELECT DISTINCT h3_id FROM "${tableId}" LIMIT 100000`;
+}
+
+async function _fetchAndApplyLayer(tableId: string): Promise<void> {
+	const state = ensureState(tableId);
+	const result = await api.runQuery(_buildLayerSql(tableId));
+	const h3Ids = result.rows
+		.map((r) => String(r.h3_id))
+		.filter((id) => id && id !== "undefined" && id !== "null");
+	const { setReferenceLayer } = useMap();
+	setReferenceLayer(tableId, h3Ids, state.color);
+}
+
 export function useLayerPanel() {
 	const { setReferenceLayer, removeReferenceLayer } = useMap();
 
@@ -60,24 +93,16 @@ export function useLayerPanel() {
 		layerStates.value[tableId] = { ...state, loading: true, error: null };
 
 		try {
-			const result = await api.runQuery(
-				`SELECT DISTINCT h3_id FROM "${tableId}" LIMIT 100000`,
-			);
-			const h3Ids = result.rows
-				.map((r) => String(r.h3_id))
-				.filter((id) => id && id !== "undefined" && id !== "null");
-
-			setReferenceLayer(tableId, h3Ids, state.color);
-
+			await _fetchAndApplyLayer(tableId);
 			layerStates.value[tableId] = {
-				...state,
+				...ensureState(tableId),
 				active: true,
 				loading: false,
 				error: null,
 			};
 		} catch (err) {
 			layerStates.value[tableId] = {
-				...state,
+				...ensureState(tableId),
 				loading: false,
 				error: err instanceof Error ? err.message : "Laden mislukt",
 			};
@@ -117,3 +142,15 @@ export function useLayerPanel() {
 
 	return { layerStates, toggleLayer, getState, activateLayers, clearAllLayers };
 }
+
+// When the spatial context changes (user picks a new point or clears it),
+// reload all currently-active reference layers so they clip to the new buffer.
+watch(activeContext, () => {
+	for (const [tableId, state] of Object.entries(layerStates.value)) {
+		if (state.active) {
+			_fetchAndApplyLayer(tableId).catch(() => {
+				// silent — layer stays visible with stale data if reload fails
+			});
+		}
+	}
+});

@@ -9,6 +9,7 @@ from app.services.helpers.messages import to_langchain_history
 from app.services.helpers.prompt_helpers import load_prompt
 from app.services.llm import make_fast_llm
 from app.services.nodes.base import BaseNode
+from app.services.policy_knowledge import get_policy_context
 
 # Dutch + English what-if keywords — only call the LLM when at least one matches.
 _SCENARIO_PATTERN = re.compile(
@@ -63,7 +64,10 @@ class ScenarioNode(BaseNode):
         ).with_structured_output(ScenarioAnalysis)
 
         result: ScenarioAnalysis = await chain.ainvoke(
-            {"history": to_langchain_history(state["messages"])}
+            {
+                "history": to_langchain_history(state["messages"]),
+                "policy_context": get_policy_context(),
+            }
         )
 
         await self.dispatch(
@@ -85,6 +89,8 @@ class ScenarioNode(BaseNode):
             assumptions=result.assumptions,
             limitations=result.limitations,
             stakeholder_impacts=result.stakeholder_impacts,
+            scenario_matrix=result.scenario_matrix,
+            decision_points=result.decision_points,
         )
 
         if result.is_scenario_question:

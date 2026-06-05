@@ -122,8 +122,73 @@ def _build_column(
 
 
 async def generate_dictionary() -> DataDictionary:
-    """Walk data/, register one DuckDB view per table, build the dictionary."""
+    """Build the data dictionary.
+
+    With FAST_STARTUP=True (default for demos): reads JSON metadata only —
+    no DuckDB connection, no column stats queries, sub-second startup.
+    With FAST_STARTUP=False: opens DuckDB and computes min/max/mean per column.
+    """
+    from app.config import settings
+
+    if settings.FAST_STARTUP:
+        return await asyncio.to_thread(_generate_dictionary_from_metadata)
     return await asyncio.to_thread(_generate_dictionary_sync)
+
+
+def _generate_dictionary_from_metadata() -> DataDictionary:
+    """Build dictionary from JSON metadata only — zero DuckDB queries."""
+    entries = discover_tables()
+    theme_metadata = load_theme_metadata()
+
+    # Index entries by table name for O(1) lookup.
+    entry_map = {e.table_name: e for e in entries}
+
+    tables_by_theme: dict[str, list[TableInfo]] = defaultdict(list)
+    total_columns = 0
+
+    for theme_name, theme_meta in theme_metadata.items():
+        for table_meta in theme_meta.get("data", []):
+            t_name = table_meta.get("naam")
+            if t_name not in entry_map:
+                continue
+            entry = entry_map[t_name]
+            col_infos: list[ColumnInfo] = []
+            for col_name, col_meta in table_meta.get("kolommen", {}).items():
+                col_infos.append(
+                    ColumnInfo(
+                        name=col_name,
+                        type=col_meta.get("type", "VARCHAR"),
+                        table=t_name,
+                        group=col_meta.get("groep", entry.group),
+                        description=col_meta.get("beschrijving", ""),
+                        unit=col_meta.get("eenheid"),
+                        categorical=bool(col_meta.get("categorisch", False)),
+                    )
+                )
+            tables_by_theme[theme_name].append(
+                TableInfo(name=t_name, group=entry.group, columns=col_infos)
+            )
+            total_columns += len(col_infos)
+
+    themes: list[Theme] = []
+    for theme_name in sorted(tables_by_theme.keys()):
+        meta = theme_metadata.get(theme_name, {})
+        themes.append(
+            Theme(
+                name=theme_name,
+                label=meta.get("label", theme_name.title()),
+                example_questions=meta.get("voorbeeldvragen", []),
+                tables=tables_by_theme[theme_name],
+            )
+        )
+
+    logger.info(
+        "Dictionary built from metadata (fast startup): %d themes, %d tables, %d columns",
+        len(themes),
+        sum(len(t.tables) for t in themes),
+        total_columns,
+    )
+    return DataDictionary(total_rows=0, total_columns=total_columns, themes=themes)
 
 
 def _generate_dictionary_sync() -> DataDictionary:
